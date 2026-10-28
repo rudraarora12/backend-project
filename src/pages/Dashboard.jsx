@@ -63,11 +63,11 @@ export const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <Link to="/preparation" className="btn btn-primary btn-sm">
+            <Link to="/ai-roadmap" className="btn btn-primary btn-sm">
               <Icon name="zap" size={15} />
-              <span>Resume Prep Sprint</span>
+              <span>Resume AI Roadmap</span>
             </Link>
-            <Link to="/interview-connect" className="btn btn-secondary btn-sm">
+            <Link to="/mock-interviews" className="btn btn-secondary btn-sm">
               <Icon name="video" size={15} />
               <span>Book Mock Call</span>
             </Link>
@@ -123,47 +123,30 @@ export const Dashboard = () => {
               </div>
 
               <Link
-                to="/video-session"
+                to="/mock-interviews?tab=room"
                 className="btn btn-primary btn-sm"
                 style={{
                   background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                   boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
                 }}
               >
-                <Icon name="video" size={15} />
-                <span>Launch Simulated Video Room</span>
+                <span>Enter Mock Room</span>
+                <Icon name="arrow-right" size={15} />
               </Link>
             </div>
           )}
 
-          {/* Section 1: Target Track Switcher (Amazon, Google, Microsoft) */}
-          <div>
-            <div style={{ marginBottom: '1rem' }}>
-              <div className="section-tag">
-                <span className="section-tag-dot" />
-                <span>Active Target Company Track</span>
-              </div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFFFFF' }}>
-                Recruitment Target Milestones
-              </h2>
-            </div>
-            <TrackSwitcher />
-          </div>
+          {/* Section 1: Target Track Switcher & Metrics */}
+          <TrackSwitcher />
 
-          {/* Section 2: Core Problem Matrix Table */}
-          <div>
-            <PracticeTable />
-          </div>
+          {/* Section 2: Coding Consistency Heatmap */}
+          <Heatmap />
 
-          {/* Section 3: 52-Week Placement Consistency Heatmap */}
-          <div>
-            <Heatmap />
-          </div>
+          {/* Section 3: Essential Interview Practice Problems Table */}
+          <PracticeTable />
 
-          {/* Section 4: Bookmarks Widget */}
-          <div>
-            <BookmarksList />
-          </div>
+          {/* Section 4: Bookmarks Manager */}
+          <BookmarksList />
         </div>
       </div>
     </div>

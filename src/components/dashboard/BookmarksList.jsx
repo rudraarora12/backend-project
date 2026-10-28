@@ -92,7 +92,7 @@ export const BookmarksList = () => {
                       <img src={c.logo} alt={c.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                     </div>
                     <div>
-                      <Link to={`/company/${c.slug}`} style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.95rem' }}>
+                      <Link to={`/company-prep?tab=intelligence&company=${c.slug}`} style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.95rem', textDecoration: 'none' }}>
                         {c.name}
                       </Link>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
@@ -115,7 +115,7 @@ export const BookmarksList = () => {
           ) : (
             <div className="empty-state" style={{ padding: '2.5rem 1rem' }}>
               <p style={{ color: 'var(--text-muted)' }}>No saved companies yet. Browse companies and click the bookmark icon!</p>
-              <Link to="/companies" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Explore Companies</Link>
+              <Link to="/company-prep" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Explore Companies</Link>
             </div>
           )}
         </div>
@@ -154,7 +154,7 @@ export const BookmarksList = () => {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Link to={`/experience/${e.id}`} className="btn btn-secondary btn-sm" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
+                    <Link to={`/company-prep?tab=experiences&id=${e.id}`} className="btn btn-secondary btn-sm" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
                       Read
                     </Link>
                     <button
@@ -172,7 +172,7 @@ export const BookmarksList = () => {
           ) : (
             <div className="empty-state" style={{ padding: '2.5rem 1rem' }}>
               <p style={{ color: 'var(--text-muted)' }}>No saved interview experiences yet.</p>
-              <Link to="/experiences" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Browse Experiences</Link>
+              <Link to="/company-prep?tab=experiences" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Browse Experiences</Link>
             </div>
           )}
         </div>
@@ -237,7 +237,7 @@ export const BookmarksList = () => {
           ) : (
             <div className="empty-state" style={{ padding: '2.5rem 1rem' }}>
               <p style={{ color: 'var(--text-muted)' }}>No saved questions yet.</p>
-              <Link to="/questions" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Explore Question Bank</Link>
+              <Link to="/company-prep?tab=questions" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>Explore Question Bank</Link>
             </div>
           )}
         </div>

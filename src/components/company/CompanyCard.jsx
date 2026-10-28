@@ -56,7 +56,7 @@ export const CompanyCard = ({ company }) => {
               </div>
               <div>
                 <Link
-                  to={`/company/${company.slug}`}
+                  to={`/company-prep?tab=intelligence&company=${company.slug}`}
                   style={{
                     fontSize: '1.2rem',
                     fontWeight: 700,
@@ -65,55 +65,65 @@ export const CompanyCard = ({ company }) => {
                     display: 'block',
                     transition: 'color 0.2s'
                   }}
-                  onMouseEnter={(e) => (e.target.style.color = 'var(--accent-cyan)')}
-                  onMouseLeave={(e) => (e.target.style.color = '#FFFFFF')}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#FFFFFF')}
                 >
                   {company.name}
                 </Link>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
-                    {company.category}
-                  </span>
-                  <span style={{ color: 'var(--border-subtle)' }}>•</span>
-                  <Badge variant={getDifficultyColor(company.avgDifficulty)} size="sm">
-                    {company.avgDifficulty.toFixed(1)} / 5.0
-                  </Badge>
-                </div>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-dim)',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                >
+                  {company.category}
+                </span>
               </div>
             </div>
 
             {/* Bookmark button */}
             <button
-              onClick={() => toggleBookmark('companies', company.id)}
-              className="btn-icon"
-              style={{
-                width: '32px',
-                height: '32px',
-                background: bookmarked ? 'var(--accent-cyan-dim)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1px solid ${bookmarked ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
-                color: bookmarked ? 'var(--accent-cyan)' : 'var(--text-dim)'
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleBookmark('companies', company.id);
               }}
-              title={bookmarked ? 'Remove Bookmark' : 'Save Company'}
+              className="btn-icon"
+              title={bookmarked ? 'Remove Bookmark' : 'Bookmark Company'}
+              style={{
+                color: bookmarked ? 'var(--accent-cyan)' : 'var(--text-dim)',
+                background: bookmarked ? 'var(--accent-cyan-dim)' : 'transparent',
+                borderColor: bookmarked ? 'var(--accent-cyan)' : 'var(--border-subtle)'
+              }}
             >
-              <Icon name={bookmarked ? 'bookmark-filled' : 'bookmark'} size={15} />
+              <Icon name={bookmarked ? 'bookmark-filled' : 'bookmark'} size={16} />
             </button>
           </div>
 
-          {/* Key Topics Tags */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', margin: '0.85rem 0 1.25rem' }}>
-            {(company.topTopics || []).slice(0, 3).map((topic, i) => (
+          {/* Difficulty Benchmark */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Difficulty:</span>
+            <Badge variant={getDifficultyColor(company.avgDifficulty)} size="sm">
+              {company.avgDifficulty.toFixed(1)} / 5.0
+            </Badge>
+          </div>
+
+          {/* Roles Tags */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
+            {company.roles.slice(0, 3).map((role, idx) => (
               <span
-                key={i}
+                key={idx}
                 style={{
                   fontSize: '0.72rem',
                   padding: '0.2rem 0.5rem',
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-full)',
                   background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid var(--border-subtle)',
-                  color: 'var(--text-muted)'
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-subtle)'
                 }}
               >
-                {topic}
+                {role}
               </span>
             ))}
           </div>
@@ -152,7 +162,7 @@ export const CompanyCard = ({ company }) => {
 
         {/* View Deep Dive Action */}
         <Link
-          to={`/company/${company.slug}`}
+          to={`/company-prep?tab=intelligence&company=${company.slug}`}
           className="btn btn-secondary btn-sm"
           style={{ width: '100%', justifyContent: 'space-between' }}
         >

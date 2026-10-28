@@ -39,19 +39,19 @@ export const Landing = () => {
                 </p>
 
                 <div className="hero-actions">
-                  <Link to="/companies" className="btn btn-primary btn-lg">
-                    <span>Explore Companies</span>
+                  <Link to="/company-prep" className="btn btn-primary btn-lg">
+                    <span>Company Prep</span>
                     <Icon name="arrow-right" size={18} />
                   </Link>
 
-                  <Link to="/preparation" className="btn btn-secondary btn-lg">
+                  <Link to="/ai-roadmap" className="btn btn-secondary btn-lg">
                     <Icon name="zap" size={18} />
-                    <span>Start Adaptive Sprint</span>
+                    <span>AI Roadmap</span>
                   </Link>
 
-                  <Link to="/interview-connect" className="btn btn-purple btn-lg">
+                  <Link to="/mock-interviews" className="btn btn-purple btn-lg">
                     <Icon name="video" size={18} />
-                    <span>Mock Connect</span>
+                    <span>Mock Interviews</span>
                   </Link>
                 </div>
 
@@ -103,7 +103,7 @@ export const Landing = () => {
               </p>
             </div>
 
-            <Link to="/companies" className="btn btn-secondary btn-sm">
+            <Link to="/company-prep?tab=directory" className="btn btn-secondary btn-sm">
               <span>View All 650+ Companies</span>
               <Icon name="arrow-right" size={15} />
             </Link>
@@ -126,14 +126,14 @@ export const Landing = () => {
               <span>Full-Stack Preparation Architecture</span>
             </div>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '0.75rem' }}>
-              Engineered for Placement Dominance
+              Consolidated Four-Pillar Intelligence
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
               Everything a student needs from Day 0 foundation building to Day 30 on-site final interview rounds.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
             <ScrollReveal delay={0.1}>
               <div className="glass-panel feature-card">
                 <div>
@@ -141,14 +141,14 @@ export const Landing = () => {
                     <Icon name="layers" size={24} />
                   </div>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.65rem' }}>
-                    Predictive Topic Analytics
+                    1. Company Prep
                   </h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                    Inspect company-specific weights (% focus on DSA, System Design, DBMS, OS, Behavioral). Stop wasting time on irrelevant topics.
+                    Explore 650+ company recruitment intelligence, topic weightages, verified student interview debriefs, and universal question bank.
                   </p>
                 </div>
-                <Link to="/companies" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span>Analyze Patterns</span>
+                <Link to="/company-prep" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>Analyze Companies</span>
                   <Icon name="arrow-right" size={14} />
                 </Link>
               </div>
@@ -161,13 +161,13 @@ export const Landing = () => {
                     <Icon name="zap" size={24} />
                   </div>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.65rem' }}>
-                    Adaptive Prep Sprints
+                    2. AI Roadmap
                   </h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                    7-day, 14-day, and 30-day dynamic roadmaps tailored to company requirements, complete with integrated Pomodoro focus timer.
+                    7-day, 14-day, and 30-day dynamic roadmaps tailored to your target company, role, and daily study hours with Pomodoro timer.
                   </p>
                 </div>
-                <Link to="/preparation" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Link to="/ai-roadmap" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span>Start Daily Sprint</span>
                   <Icon name="arrow-right" size={14} />
                 </Link>
@@ -181,14 +181,34 @@ export const Landing = () => {
                     <Icon name="video" size={24} />
                   </div>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.65rem' }}>
-                    1-on-1 Peer Mock Connect
+                    3. Mock Interviews
                   </h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                    Simulate real interview loops with placed seniors from Amazon, Google, Microsoft, Uber, and Goldman Sachs. Receive tactical rating debriefs.
+                    Simulate real interview loops with placed seniors from Amazon, Google, Microsoft, Uber, and receive tactical rating debriefs.
                   </p>
                 </div>
-                <Link to="/interview-connect" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span>Find a Mentor</span>
+                <Link to="/mock-interviews" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>Book Mock Session</span>
+                  <Icon name="arrow-right" size={14} />
+                </Link>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.4}>
+              <div className="glass-panel feature-card">
+                <div>
+                  <div className="feature-icon-wrapper" style={{ background: 'rgba(0, 212, 255, 0.15)', color: 'var(--accent-cyan)' }}>
+                    <Icon name="message-circle" size={24} />
+                  </div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.65rem' }}>
+                    4. Expert Chat
+                  </h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                    Direct 1-on-1 text advisory with campus alumni and placed mentors for quick doubts on OA strategy, resumes, and culture.
+                  </p>
+                </div>
+                <Link to="/expert-chat" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>Start Chatting</span>
                   <Icon name="arrow-right" size={14} />
                 </Link>
               </div>
@@ -235,11 +255,11 @@ export const Landing = () => {
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <Link to="/submit" className="btn btn-primary btn-lg">
+              <Link to="/company-prep?tab=submit" className="btn btn-primary btn-lg">
                 <Icon name="plus" size={18} />
                 <span>Submit Your Placement Experience</span>
               </Link>
-              <Link to="/questions" className="btn btn-secondary btn-lg">
+              <Link to="/company-prep?tab=questions" className="btn btn-secondary btn-lg">
                 <Icon name="book" size={18} />
                 <span>Explore Universal Question Bank</span>
               </Link>

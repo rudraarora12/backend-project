@@ -44,7 +44,7 @@ export const Footer = () => {
               </span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-              Crowdsourced university campus placement intelligence & technical interview roadmap platform. Real round breakdowns, predictive company pattern analytics, and verified peer mock interviews.
+              Consolidated university campus placement intelligence & technical interview roadmap platform. Real round breakdowns, predictive company pattern analytics, and verified peer mock interviews.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem', color: 'var(--status-emerald)' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-emerald)', boxShadow: '0 0 8px var(--status-emerald)' }} />
@@ -52,41 +52,85 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Core Four Pillars */}
           <div>
             <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#FFFFFF', marginBottom: '1.25rem', fontFamily: 'var(--font-mono)' }}>
-              Placement Hub
+              Core Intelligence
             </h4>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <li><Link to="/companies" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Company Topic Weightages</Link></li>
-              <li><Link to="/experiences" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Interview Round Breakdowns</Link></li>
-              <li><Link to="/preparation" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Adaptive Prep Sprints</Link></li>
-              <li><Link to="/questions" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Universal Question Bank</Link></li>
+              <li>
+                <Link to="/company-prep" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  1. Company Prep & Intelligence
+                </Link>
+              </li>
+              <li>
+                <Link to="/ai-roadmap" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  2. Adaptive AI Roadmap
+                </Link>
+              </li>
+              <li>
+                <Link to="/mock-interviews" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  3. Peer & Mentor Mock Interviews
+                </Link>
+              </li>
+              <li>
+                <Link to="/expert-chat" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  4. 1-on-1 Expert Advisory Chat
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Peer Mock & Tools */}
+          {/* Practice & Tools */}
           <div>
             <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#FFFFFF', marginBottom: '1.25rem', fontFamily: 'var(--font-mono)' }}>
-              Practice & Mock
+              Practice & Submission
             </h4>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <li><Link to="/interview-connect" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>1-on-1 Peer Mentors</Link></li>
-              <li><Link to="/video-session" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Simulated Mock Video Room</Link></li>
-              <li><Link to="/dashboard" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Student Target Tracks</Link></li>
-              <li><Link to="/submit" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Submit Placement Report</Link></li>
+              <li>
+                <Link to="/company-prep?tab=questions" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Universal Question Bank
+                </Link>
+              </li>
+              <li>
+                <Link to="/company-prep?tab=experiences" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Student Interview Logs
+                </Link>
+              </li>
+              <li>
+                <Link to="/company-prep?tab=submit" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Submit Placement Experience
+                </Link>
+              </li>
+              <li>
+                <Link to="/mock-interviews?tab=room" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Simulated Video Room (Demo)
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Moderation & Admin */}
+          {/* Account & Moderation */}
           <div>
             <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#FFFFFF', marginBottom: '1.25rem', fontFamily: 'var(--font-mono)' }}>
-              Governance
+              Student Portal
             </h4>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <li><Link to="/admin" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Moderation Desk</Link></li>
-              <li><Link to="/profile" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>Student Profile & Bookmarks</Link></li>
-              <li><span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Strict Verification Protocol</span></li>
+              <li>
+                <Link to="/dashboard" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  My Target Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/profile" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Profile & Bookmarks
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#00D4FF')} onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}>
+                  Placement Moderation Desk
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -106,11 +150,11 @@ export const Footer = () => {
           }}
         >
           <div>
-            © {new Date().getFullYear()} Interview Intelligence (IntelliGrid). Built for university aspiring engineers.
+            © {new Date().getFullYear()} Interview Intelligence (IntelliGrid 2.0). Built for university aspiring engineers.
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', fontFamily: 'var(--font-mono)' }}>
-            <span>v2.8.4-PROD</span>
-            <span className="text-cyan">ZERO-EXTERNAL-UI</span>
+            <span>v2.8.5-CONSOLIDATED</span>
+            <span className="text-cyan">FOUR-CORE-PILLARS</span>
             <span className="text-purple">DARK-CYBER-PUNK</span>
           </div>
         </div>

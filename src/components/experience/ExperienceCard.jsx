@@ -31,10 +31,10 @@ export const ExperienceCard = ({ experience }) => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
                 <Link
-                  to={`/company/${experience.companySlug}`}
-                  style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF' }}
-                  onMouseEnter={(e) => (e.target.style.color = 'var(--accent-cyan)')}
-                  onMouseLeave={(e) => (e.target.style.color = '#FFFFFF')}
+                  to={`/company-prep?tab=intelligence&company=${experience.companySlug}`}
+                  style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', textDecoration: 'none' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#FFFFFF')}
                 >
                   {experience.company}
                 </Link>
@@ -54,7 +54,11 @@ export const ExperienceCard = ({ experience }) => {
             </div>
 
             <button
-              onClick={() => toggleBookmark('experiences', experience.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleBookmark('experiences', experience.id);
+              }}
               className="btn-icon"
               style={{
                 width: '32px',
@@ -69,64 +73,47 @@ export const ExperienceCard = ({ experience }) => {
             </button>
           </div>
 
-          {/* Metadata chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.78rem', color: 'var(--text-dim)', margin: '0.65rem 0 1rem' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Icon name="calendar" size={13} />
-              {experience.year}
-            </span>
+          {/* Drive Meta Badges */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.775rem', color: 'var(--text-dim)', marginBottom: '1rem' }}>
+            <span>{experience.channel}</span>
             <span>•</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Icon name="layers" size={13} />
-              {experience.channel || 'On-Campus'}
-            </span>
-            {experience.ctc && (
-              <>
-                <span>•</span>
-                <span style={{ color: 'var(--status-amber)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-                  {experience.ctc}
-                </span>
-              </>
-            )}
+            <span>Batch {experience.year}</span>
+            <span>•</span>
+            <span style={{ color: 'var(--status-emerald)', fontWeight: 600 }}>{experience.ctc}</span>
           </div>
 
-          {/* Snippet / Rounds Overview */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', marginBottom: '0.35rem' }}>
-              ROUNDS RECORDED ({experience.rounds?.length || 0})
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-              {(experience.rounds || []).map((r, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-muted)'
-                  }}
-                >
-                  R{i + 1}: {r.type.split('(')[0].trim()}
-                </span>
-              ))}
-            </div>
+          {/* Topics Tag List */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
+            {experience.topics?.map((topic, i) => (
+              <span
+                key={i}
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'rgba(0, 212, 255, 0.06)',
+                  color: 'var(--accent-cyan)',
+                  border: '1px solid rgba(0, 212, 255, 0.15)'
+                }}
+              >
+                {topic}
+              </span>
+            ))}
           </div>
 
-          {/* Advice Snippet */}
+          {/* Preparation Advice Excerpt */}
           {experience.prepAdvice && (
             <p
               style={{
                 fontSize: '0.85rem',
                 color: 'var(--text-muted)',
                 lineHeight: 1.5,
+                margin: '0 0 1rem 0',
+                fontStyle: 'italic',
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                fontStyle: 'italic',
-                marginBottom: '1.25rem'
+                overflow: 'hidden'
               }}
             >
               "{experience.prepAdvice}"
@@ -148,7 +135,7 @@ export const ExperienceCard = ({ experience }) => {
           <HelpfulVoteBtn experienceId={experience.id} initialVotes={experience.helpfulVotes || 0} />
 
           <Link
-            to={`/experience/${experience.id}`}
+            to={`/company-prep?tab=experiences&id=${experience.id}`}
             className="btn btn-secondary btn-sm"
             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
           >

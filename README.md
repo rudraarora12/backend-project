@@ -1,59 +1,56 @@
-# ⚡ IntelliGrid — Interview Intelligence
+# ⚡ IntelliGrid 2.0 — Interview Intelligence
 
 > **Next-Generation Student Interview Preparation & Campus Placement Intelligence Platform**  
-> Built with **React 19**, **Vite**, **React Router v7**, and a **Custom Dark Cyberpunk / Deep Glassmorphism Design System**.
+> Built with **React 19**, **Vite**, **React Router v7**, and a **Consolidated Four-Pillar Dark Cyberpunk Architecture**.
 
 ---
 
 ## 🌟 Executive Overview
 
-**IntelliGrid (Interview Intelligence)** is an end-to-end web platform engineered for engineering students, campus candidates, and aspiring software engineers preparing for Tier-1 product companies, fintech firms, FAANG, and tech campus placement drives.
+**IntelliGrid 2.0 (Interview Intelligence)** is an end-to-end web platform engineered for engineering students, campus candidates, and software engineers preparing for Tier-1 product companies, fintech firms, and FAANG recruitment drives.
 
-It bridges the preparation gap by combining verified crowdsourced interview experiences, predictive topic weightage analytics, adaptive day-by-day study sprints, real-time peer mock interviews with a simulated video suite, and a community question repository.
+The application has been unified into **EXACTLY FOUR PRIMARY NAVIGATION PILLARS** to eliminate UI clutter while preserving comprehensive placement intelligence, personalized study schedules, peer mocks, and text advisory.
 
 ---
 
-## 🚀 Key Features
+## 🏛️ The Four Core Intelligence Pillars
 
-### 1. 🏢 Placement Intelligence & Verified Experiences
-- **650+ Company Coverage**: In-depth profiles for Google, Amazon, Microsoft, Uber, Atlassian, Goldman Sachs, and more.
-- **Round-by-Round Breakdown**: Granular logs covering Online Assessments (OA), Technical Coding, System Design / CS Fundamentals, and Hiring Manager / Leadership Principles.
-- **Filter & Search Engine**: Filter by company tier, role (SDE-1, Intern, Backend), outcome (Selected, Rejected), and interview difficulty.
-- **Community Upvotes & Bookmarks**: Save essential interview debriefs and upvote helpful community submissions.
+### 1. 🏢 Company Prep (`/company-prep`)
+Everything related to researching companies, understanding hiring bars, and analyzing real rounds in one consolidated section:
+- **Company Directory**: Searchable catalog of 650+ tech leaders with category tabs (Product, Fintech, Cloud/AI, Service) and difficulty ratings.
+- **Company Interview Intelligence**: Historical topic weightages (% DSA, System Design, DBMS, OS, OOP, Behavioral), recruitment loop architecture, culture notes, and frequently asked problems with direct LeetCode links.
+- **Crowdsourced Experiences Feed**: Student placement logs filterable by outcome (Selected/Rejected), recruitment drive type, and difficulty, with nested round-by-round breakdown views and helpful upvotes.
+- **Universal Question Bank**: Filter problems by domain topic, difficulty, frequency, and company presence.
+- **Share Interview Experience**: Multi-step submission wizard with dynamic round builder, difficulty slider, and placement integrity moderation flow.
 
-### 2. 📊 Predictive Topic & Pattern Analytics
-- **Exact Weightage Visualizations**: Interactive percentage distribution breakdown for DSA, System Design, DBMS, Operating Systems, OOPs, and Behavioral rounds per company.
-- **Hiring Trends & Focus Areas**: Learn what each company prioritizes before stepping into the interview.
+### 2. ⚡ AI Roadmap (`/ai-roadmap`)
+Actionable, personalized preparation schedules based on student goals, current ability, and available daily study time:
+- **Customizable Setup**: Tailor by target company (FAANG or General Placement), target role (SDE Intern, SDE-1, Backend, AI/ML), current baseline (Beginner/Intermediate/Advanced), available daily hours (1-2h, 2-4h, 4-6h), and sprint duration (7, 14, 30 Days).
+- **Rule-Based Algorithmic Planner (Demo Mode)**: Generates structured daily missions respecting time budgets with topic focus, problem checklists, and revision/mock milestones.
+- **Integrated Pomodoro Focus Timer**: Built-in 25-minute study intervals, 5-minute rest breaks, audio alert, and session counter.
+- **Progress Tracking & Readiness Score**: Persistent completion state in `localStorage` with dynamic percentage calculation.
 
-### 3. 🎯 Adaptive Day-by-Day Preparation Sprints
-- **Customizable Roadmaps**: Choose between **7-Day Rapid Sprint**, **14-Day Targeted Prep**, or **30-Day Comprehensive Mastery**.
-- **LeetCode & GFG Deep Links**: Direct problem links curated for each mission.
-- **Built-in Pomodoro Focus Timer**: 25-minute study intervals, 5-minute rest breaks, audio chime notifications, and session counters.
-- **Readiness Gauge**: Real-time readiness calculation based on completed daily checklists.
+### 3. 🤝 Mock Interviews (`/mock-interviews`)
+1-on-1 interview practice with verified placed seniors from top tech enterprises:
+- **Mentor Directory**: Searchable mentor profiles with company badges, ratings, hourly rates, available slots, and focus topics.
+- **Booking Flow**: Select date, time slot, and session type with instant booking validation and storage.
+- **My Bookings**: View upcoming and completed sessions with direct launch actions.
+- **Simulated Video Room (Demo)**: Media controls (mic/camera/screen-share), elapsed timer, collaborative code editor/scratchpad with language selection, terminal execution console, problem prompt, and rating debrief modal for structured peer evaluation.
 
-### 4. 🤝 Peer & Mentor Mock Connect (Interview Connect)
-- **Verified Mentor Network**: Connect with candidates and senior engineers who have already cleared target companies.
-- **Slot Booking Flow**: Schedule 1-on-1 mock interviews, resume critiques, and system design drills.
-- **Simulated Video Interview Suite**:
-  - Full-duplex simulated media room with mic, camera, screen-share, and layout toggles.
-  - Interactive collaborative scratchpad / code editor with language selection.
-  - Real-time rating debrief modal for structured peer evaluation.
+### 4. 💬 Expert Chat (`/expert-chat`)
+Direct 1-on-1 text advisory with campus alumni and placed mentors:
+- **Searchable Expert Sidebar**: Filter mentors by company (Amazon, Google, Microsoft, Goldman Sachs, Uber).
+- **Conversation Thread**: Message bubbles distinguishing student and expert, timestamps, and domain-specific initial guidance.
+- **Message Composer**: Multiline composer with `Enter` to send, `Shift+Enter` for a new line, validation, and sending state.
+- **Local Demo Storage**: Offline encrypted chat history saved locally in `localStorage` per user and mentor.
 
-### 5. 💡 Interactive Question Bank
-- Real interview questions ranked by report frequency and tagged with difficulty (Easy / Medium / Hard).
-- Filterable by topic (Arrays, Dynamic Programming, Graphs, Trees, System Design, SQL).
-- Direct external links to LeetCode and GeeksforGeeks solutions.
+---
 
-### 6. 🔒 Modern Split-Card Auth Experience
-- Dual-mode Sign In / Sign Up portal with seamless tab switching.
-- University SSO simulation (Google, GitHub, Campus SSO).
-- Live placement feed ticker showing real-time community activity and offer announcements.
-
-### 7. 📈 Student Portal & Personal Dashboard
-- **Target Company Track Switcher**: Toggle your active preparation goal between Amazon, Google, Microsoft, etc.
-- **GitHub-style 52-Week Practice Heatmap**: Track your daily consistency and coding streaks.
-- **Practice Challenge Checklist**: Mark questions as completed, in-progress, or flagged.
-- **Categorized Bookmarks**: Easy access to saved companies, questions, and reports.
+## 🔒 Contextual & Account Utilities
+- **My Target Dashboard (`/dashboard`)**: Active company track switcher (Amazon/Google/Microsoft), GitHub-style 52-week activity heatmap, and practice table.
+- **Student Profile & Bookmarks (`/profile`)**: Manage profile details and categorized saved companies, experiences, and questions.
+- **Moderation Desk (`/admin`)**: Queue to verify, index, or flag crowdsourced placement reports.
+- **Authentication Portal (`/login`, `/register`)**: Unified dark cyberpunk split-card authentication with Google, GitHub, and Campus SSO simulation.
 
 ---
 
@@ -63,15 +60,15 @@ It bridges the preparation gap by combining verified crowdsourced interview expe
 |---|---|---|
 | **Frontend Framework** | React 19 (`^19.0.0`) | Modern React hooks, Context API, Zero bloated component libraries |
 | **Tooling & Bundler** | Vite (`^6.2.0`) | Lightning-fast HMR and optimized production builds |
-| **Routing** | React Router v7 (`^7.2.0`) | Declarative client-side routing, URL query state, automatic scroll restoration |
+| **Routing** | React Router v7 (`^7.2.0`) | Consolidated 4-pillar routing, legacy route redirects with parameter preservation |
 | **Canvas & VFX** | HTML5 Canvas API | Interactive floating constellation particles & 3D card tilt parallax |
 | **Styling & Theme** | Custom CSS3 & CSS Variables | Dark Cyberpunk / Deep Glassmorphism (`#00D4FF` Electric Cyan, `#6C63FF` Purple) |
 | **Typography** | Google Fonts | *Plus Jakarta Sans* (UI & Headings) and *JetBrains Mono* (Code & Metrics) |
-| **State & Persistence** | React Context + LocalStorage | Synchronized session, bookmarks, practice checklist, and toast notifications |
+| **State & Persistence** | React Context + LocalStorage | Synchronized session, bookmarks, practice checklist, chat history, and toast alerts |
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Directory Structure
 
 ```
 backend-project/
@@ -80,7 +77,7 @@ backend-project/
 ├── vite.config.js                  # Vite configuration with React plugin
 ├── src/
 │   ├── main.jsx                    # React root mount point (StrictMode)
-│   ├── App.jsx                     # Route definitions, layout providers, background effects
+│   ├── App.jsx                     # 4 consolidated primary routes + legacy redirects
 │   ├── index.css                   # Global reset & baseline layout
 │   │
 │   ├── context/
@@ -88,23 +85,23 @@ backend-project/
 │   │
 │   ├── services/
 │   │   ├── experienceService.js    # Experience querying, LeetCode matching, submission persistence
-│   │   └── connectService.js       # Mentor querying, booking slots creation, mock session reviews
+│   │   └── connectService.js       # Mentor querying, booking slots creation, mock reviews
 │   │
 │   ├── data/
 │   │   ├── companies.js            # 12+ company profiles, patterns, frequently asked questions
-│   │   ├── experiences.js          # Detailed historical interview experiences with round logs
-│   │   ├── preparation.js          # Topic banks, daily sprint generator (7/14/30 days), priority tips
-│   │   ├── interviewers.js         # Peer mentors & candidates available for mock interviews
+│   │   ├── experiences.js          # Historical interview experiences with round logs
+│   │   ├── preparation.js          # Topic banks, customizable roadmap generator (7/14/30 days)
+│   │   ├── interviewers.js         # Peer mentors & candidates available for mock interviews & chat
 │   │   ├── questions.js            # Universal question repository with difficulty & frequency tags
 │   │   ├── dashboard.js            # Track configs (Amazon, Google, Microsoft) & default challenges
-│   │   └── users.js                # Default user profile, admin moderation queue, bookmark storage
+│   │   └── users.js                # Default user profile, admin moderation queue, bookmarks
 │   │
 │   ├── hooks/
 │   │   ├── useLocalStorage.js      # Synchronized localStorage state hook
 │   │   └── useScrollReveal.js      # IntersectionObserver hook for subtle on-scroll transitions
 │   │
 │   ├── components/
-│   │   ├── layout/                 # Navbar, Footer, Preloader
+│   │   ├── layout/                 # Navbar (Exactly 4 primary items), Footer, Preloader
 │   │   ├── effects/                # ParticleBackground, GlobalBackground, CardTilt
 │   │   ├── common/                 # Icons, Modal, Toast, Badge, ProgressBar, ScrollReveal
 │   │   ├── landing/                # HologramHero, StatsSection
@@ -117,28 +114,24 @@ backend-project/
 │   │   ├── auth/                   # LiveFeed
 │   │   └── submit/                 # StepIndicator, RoundBuilder
 │   │
-│   ├── pages/                      # All 16 complete page views
-│   │   ├── Landing.jsx
-│   │   ├── Companies.jsx
-│   │   ├── CompanyDetail.jsx
-│   │   ├── Experiences.jsx
-│   │   ├── ExperienceDetail.jsx
-│   │   ├── Preparation.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Questions.jsx
-│   │   ├── InterviewConnect.jsx
-│   │   ├── CandidateProfile.jsx
-│   │   ├── VideoSession.jsx
-│   │   ├── Submit.jsx
-│   │   ├── Admin.jsx
-│   │   ├── Profile.jsx
-│   │   ├── Login.jsx
-│   │   └── Register.jsx
+│   ├── pages/                      # 4 Primary Pillars + Landing & Utility Views
+│   │   ├── CompanyPrep.jsx         # Pillar 1: Directory, Intelligence, Experiences, Questions, Submit
+│   │   ├── AiRoadmap.jsx           # Pillar 2: Setup Form, Daily Missions, Pomodoro Timer
+│   │   ├── MockInterviews.jsx      # Pillar 3: Mentor Directory, Booking Flow, Video Room
+│   │   ├── ExpertChat.jsx          # Pillar 4: 1-on-1 Direct Text Advisory Chat
+│   │   ├── Landing.jsx             # Public Home
+│   │   ├── Dashboard.jsx           # Student Target Dashboard
+│   │   ├── Profile.jsx             # Student Profile & Bookmarks
+│   │   ├── Admin.jsx               # Placement Moderation Desk
+│   │   ├── Login.jsx               # Unified Auth Portal
+│   │   └── Register.jsx            # Sign Up Redirect
 │   │
 │   └── styles/                     # Modular pure CSS stylesheets
 │       ├── global.css
 │       ├── auth.css
 │       ├── landing.css
+│       ├── company-prep.css
+│       ├── expert-chat.css
 │       ├── companies.css
 │       ├── company.css
 │       ├── experiences.css
@@ -157,7 +150,7 @@ backend-project/
 - **Node.js**: v18.0.0 or higher (v20+ recommended)
 - **npm** or **pnpm** or **yarn**
 
-### Installation
+### Quick Start
 
 1. **Clone the repository**:
    ```bash
@@ -180,23 +173,6 @@ backend-project/
    ```bash
    npm run build
    ```
-   Preview the production build locally:
-   ```bash
-   npm run preview
-   ```
-
----
-
-## 🎨 Design System & Color Tokens
-
-- **Background Base**: `#070B14` (Deep Space Obsidian)
-- **Surface Elevation**: `#0D1527` / `#131E3A` with Glassmorphism blur
-- **Primary Accent**: `#00D4FF` (Electric Cyan)
-- **Secondary Accent**: `#6C63FF` (Cyber Violet)
-- **Success / Selected**: `#00F5A0` (Emerald Glow)
-- **Warning / Medium**: `#FFB800` (Amber Flare)
-- **Danger / Hard**: `#FF4D6D` (Neon Crimson)
-- **Font Stack**: `Plus Jakarta Sans`, `Inter`, `JetBrains Mono`
 
 ---
 

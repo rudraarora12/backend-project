@@ -4,7 +4,12 @@ import { Icon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { CardTilt } from '../effects/CardTilt';
 
-export const InterviewerCard = ({ mentor, onBookClick }) => {
+export const InterviewerCard = ({ mentor, interviewer, onBookClick, onBook }) => {
+  const mentorData = mentor || interviewer;
+  const handleBook = onBookClick || onBook;
+
+  if (!mentorData) return null;
+
   return (
     <CardTilt maxTilt={6} scale={1.015}>
       <div
@@ -21,8 +26,8 @@ export const InterviewerCard = ({ mentor, onBookClick }) => {
           {/* Mentor Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <img
-              src={mentor.avatar}
-              alt={mentor.name}
+              src={mentorData.avatar}
+              alt={mentorData.name}
               style={{
                 width: '60px',
                 height: '60px',
@@ -34,18 +39,18 @@ export const InterviewerCard = ({ mentor, onBookClick }) => {
             />
             <div>
               <Link
-                to={`/candidate/${mentor.id}`}
+                to={`/mock-interviews?tab=mentors&mentor=${mentorData.id}`}
                 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', textDecoration: 'none' }}
-                onMouseEnter={(e) => (e.target.style.color = 'var(--accent-cyan)')}
-                onMouseLeave={(e) => (e.target.style.color = '#FFFFFF')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#FFFFFF')}
               >
-                {mentor.name}
+                {mentorData.name}
               </Link>
               <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
-                {mentor.company}
+                {mentorData.company}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {mentor.role}
+                {mentorData.role}
               </div>
             </div>
           </div>
@@ -58,44 +63,44 @@ export const InterviewerCard = ({ mentor, onBookClick }) => {
               justifyContent: 'space-between',
               padding: '0.65rem 0.85rem',
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(7, 12, 24, 0.6)',
+              background: 'rgba(7, 12, 24, 0.7)',
               border: '1px solid var(--border-subtle)',
               marginBottom: '1rem',
               fontSize: '0.825rem'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#FBBF24' }}>
-              <Icon name="star" size={14} color="#FBBF24" />
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{mentor.rating.toFixed(2)}</span>
-              <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>({mentor.reviewCount} mocks)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Icon name="star" size={14} color="#FFD700" />
+              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{mentorData.rating.toFixed(2)}</span>
+              <span style={{ color: 'var(--text-dim)' }}>({mentorData.reviewCount} mocks)</span>
             </div>
 
-            <div className="font-mono" style={{ color: 'var(--status-emerald)', fontWeight: 700 }}>
-              ₹{mentor.hourlyRate} / session
+            <div style={{ fontWeight: 700, color: 'var(--status-emerald)', fontFamily: 'var(--font-mono)' }}>
+              ₹{mentorData.hourlyRate} / 45m
             </div>
           </div>
 
-          {/* Bio Snippet */}
+          {/* Bio Preview */}
           <p
             style={{
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               color: 'var(--text-muted)',
               lineHeight: 1.5,
+              marginBottom: '1rem',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              marginBottom: '1rem'
+              overflow: 'hidden'
             }}
           >
-            {mentor.bio}
+            {mentorData.bio}
           </p>
 
-          {/* Topics evaluation pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1.25rem' }}>
-            {(mentor.topics || []).slice(0, 3).map((topic, i) => (
+          {/* Topics tags */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
+            {mentorData.topics.slice(0, 3).map((topic, idx) => (
               <span
-                key={i}
+                key={idx}
                 style={{
                   fontSize: '0.72rem',
                   padding: '0.2rem 0.5rem',
@@ -112,19 +117,28 @@ export const InterviewerCard = ({ mentor, onBookClick }) => {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '0.65rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-subtle)' }}>
           <Link
-            to={`/candidate/${mentor.id}`}
+            to={`/expert-chat?expert=${mentorData.id}`}
             className="btn btn-secondary btn-sm"
-            style={{ flex: 1 }}
+            title="Direct chat with mentor"
+            style={{ padding: '0.4rem 0.6rem' }}
+          >
+            <Icon name="message-circle" size={14} />
+          </Link>
+
+          <Link
+            to={`/mock-interviews?tab=mentors&mentor=${mentorData.id}`}
+            className="btn btn-secondary btn-sm"
+            style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
           >
             Profile
           </Link>
 
           <button
-            onClick={() => onBookClick(mentor)}
+            onClick={() => handleBook && handleBook(mentorData)}
             className="btn btn-primary btn-sm"
-            style={{ flex: 1.2 }}
+            style={{ flex: 1.2, justifyContent: 'center' }}
           >
             <Icon name="calendar" size={14} />
             <span>Book Mock</span>

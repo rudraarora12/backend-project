@@ -81,17 +81,35 @@ export const MASTER_TOPIC_BANK = {
     problems: [
       { id: "p-801", title: "Tell me about a challenging bug you debugged in production", difficulty: "Medium", timeMinutes: 30, url: "https://leetcode.com" },
       { id: "p-802", title: "Describe a scenario where you disagreed with a senior engineer", difficulty: "Medium", timeMinutes: 30, url: "https://leetcode.com" },
-      { id: "p-803", title: "Full 45-min Mock Interview with Peer Mentor", difficulty: "Hard", timeMinutes: 45, url: "/interview-connect" }
+      { id: "p-803", title: "Full 45-min Mock Interview with Peer Mentor", difficulty: "Hard", timeMinutes: 45, url: "/mock-interviews" }
     ],
     proTip: "Spend 70% of your time on the 'Action' and 'Result' sections of the STAR framework. Quantify your outcome: 'Reduced latency by 42%'."
   }
 };
 
+/**
+ * Standard baseline schedule generator (backwards-compatible)
+ */
 export const generateSchedule = (days = 7, level = "intermediate") => {
+  return generateCustomRoadmap({ days, level });
+};
+
+/**
+ * Enhanced customizable schedule generator respecting daily budget, role, and focus areas
+ */
+export const generateCustomRoadmap = ({
+  days = 7,
+  level = "intermediate",
+  targetCompany = "amazon",
+  role = "SDE-1",
+  dailyHours = 3,
+  focusAreas = []
+}) => {
   const dayPlans = [];
   const totalDays = Number(days);
+  const targetDailyMinutes = Math.max(60, Number(dailyHours) * 60);
 
-  const topicKeys = [
+  const topicSequence = [
     "arrays_hashing",
     "two_pointers",
     "linked_lists",
@@ -103,59 +121,60 @@ export const generateSchedule = (days = 7, level = "intermediate") => {
   ];
 
   for (let d = 1; d <= totalDays; d++) {
+    // Determine revision or mock checkpoint days
+    const isMockDay = d === totalDays || (totalDays === 30 && (d === 15 || d === 30));
+    const isRevisionDay = (totalDays === 14 && d === 7) || (totalDays === 30 && (d === 8 || d === 22));
+
     let topicKey;
-    if (totalDays === 7) {
-      const map7 = [
-        "arrays_hashing",
-        "two_pointers",
-        "linked_lists",
-        "trees_bst",
-        "graphs_dfs_bfs",
-        "dynamic_programming",
-        "behavioral_star"
-      ];
-      topicKey = map7[d - 1] || "system_design";
-    } else if (totalDays === 14) {
-      const map14 = [
-        "arrays_hashing",
-        "arrays_hashing",
-        "two_pointers",
-        "two_pointers",
-        "linked_lists",
-        "trees_bst",
-        "trees_bst",
-        "graphs_dfs_bfs",
-        "graphs_dfs_bfs",
-        "dynamic_programming",
-        "dynamic_programming",
-        "system_design",
-        "system_design",
-        "behavioral_star"
-      ];
-      topicKey = map14[d - 1] || "trees_bst";
+    if (isMockDay) {
+      topicKey = "behavioral_star";
+    } else if (isRevisionDay) {
+      topicKey = "system_design";
     } else {
-      const cycleIndex = (d - 1) % topicKeys.length;
-      topicKey = topicKeys[cycleIndex];
+      const cycleIdx = (d - 1) % topicSequence.length;
+      topicKey = topicSequence[cycleIdx];
     }
 
     const topicData = MASTER_TOPIC_BANK[topicKey];
-    let selectedProblems = topicData.problems;
+    let candidateProblems = [...topicData.problems];
 
+    // Filter by skill level
     if (level === "beginner") {
-      selectedProblems = topicData.problems.filter((p) => p.difficulty !== "Hard").slice(0, 2);
+      candidateProblems = candidateProblems.filter((p) => p.difficulty !== "Hard");
     } else if (level === "advanced") {
-      selectedProblems = topicData.problems.filter((p) => p.difficulty !== "Easy");
-    } else {
-      selectedProblems = topicData.problems.slice(0, 3);
+      candidateProblems = candidateProblems.filter((p) => p.difficulty !== "Easy");
+    }
+
+    // Select tasks that fit approximately within the daily hours budget
+    let accumulatedMins = 0;
+    const dayProblems = [];
+
+    for (const prob of candidateProblems) {
+      if (accumulatedMins + prob.timeMinutes <= targetDailyMinutes + 30 || dayProblems.length === 0) {
+        dayProblems.push(prob);
+        accumulatedMins += prob.timeMinutes;
+      }
+      if (dayProblems.length >= 4) break;
+    }
+
+    let dayTitle = `Day ${d}: ${topicData.title}`;
+    let objective = topicData.focus;
+
+    if (isMockDay) {
+      dayTitle = `Day ${d}: Full Mock Interview & Placement Readiness Simulation`;
+      objective = `Simulate an end-to-end technical & behavioral interview loop for ${role}.`;
+    } else if (isRevisionDay) {
+      dayTitle = `Day ${d}: High-Yield Revision & System Architecture Checkpoint`;
+      objective = `Review all previously flagged algorithmic patterns and review high-level system design tradeoffs.`;
     }
 
     dayPlans.push({
       day: d,
-      title: `Day ${d}: ${topicData.title}`,
-      focus: topicData.focus,
+      title: dayTitle,
+      focus: objective,
       proTip: topicData.proTip,
-      problems: selectedProblems,
-      estimatedTime: `${selectedProblems.reduce((acc, curr) => acc + curr.timeMinutes, 0)} mins`
+      problems: dayProblems,
+      estimatedTime: `${accumulatedMins} mins`
     });
   }
 
