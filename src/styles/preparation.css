@@ -1,0 +1,24 @@
+/* Preparation Sprint Styles */
+.prep-layout-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.prep-sidebar-sticky {
+  position: sticky;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 960px) {
+  .prep-layout-grid {
+    grid-template-columns: 1fr;
+  }
+  .prep-sidebar-sticky {
+    position: static;
+  }
+}

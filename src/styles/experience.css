@@ -1,0 +1,18 @@
+/* Experience Story Detail Styles */
+.experience-hero {
+  padding: 2.5rem;
+  border-radius: var(--radius-xl);
+  margin-bottom: 2.5rem;
+}
+
+.experience-grid-layout {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 2rem;
+}
+
+@media (max-width: 900px) {
+  .experience-grid-layout {
+    grid-template-columns: 1fr;
+  }
+}

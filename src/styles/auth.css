@@ -1,0 +1,417 @@
+/* =========================================================
+   Modern Split-Screen Auth Card (Website Cyber Theme)
+   Deep Dark Glassmorphism + Electric Cyan + Fluid Blue Art
+   ========================================================= */
+
+.auth-page-container {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* The Main Card Container */
+.art-auth-card {
+  width: 100%;
+  max-width: 980px;
+  background: rgba(13, 21, 39, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 212, 255, 0.2);
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  padding: 14px;
+  color: var(--text-main);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Subtle cyan accent top highlight */
+.art-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+  box-shadow: 0 0 15px var(--accent-cyan);
+  z-index: 10;
+}
+
+/* =========================================================
+   Left Column: Liquid Blue/Cyan Art Banner
+   ========================================================= */
+.art-auth-banner {
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3.5rem 2.5rem;
+  color: #FFFFFF;
+  background-color: #030816;
+  background-image: 
+    radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(108, 99, 255, 0.35) 0%, transparent 50%),
+    url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  min-height: 520px;
+}
+
+/* Dark gradient overlay for ultra-crisp typography */
+.art-auth-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(3, 8, 22, 0.7) 0%, rgba(5, 12, 34, 0.45) 50%, rgba(3, 8, 22, 0.8) 100%);
+  z-index: 1;
+}
+
+.art-banner-content {
+  position: relative;
+  z-index: 2;
+  max-width: 380px;
+}
+
+.art-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+  background: var(--accent-cyan-dim);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(10px);
+  margin-bottom: 1.5rem;
+}
+
+.art-banner-title {
+  font-size: clamp(2.2rem, 3.2vw, 3rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #FFFFFF;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.art-banner-subtitle {
+  font-size: 1.15rem;
+  color: #E2E8F0;
+  line-height: 1.5;
+  font-weight: 400;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  margin-bottom: 2rem;
+}
+
+/* =========================================================
+   Right Column: Cybernetic Dark Glass Form
+   ========================================================= */
+.art-auth-form-side {
+  padding: 2.5rem 2.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: transparent;
+}
+
+.art-form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.art-form-title {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.art-form-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Form Fields */
+.art-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.art-input {
+  width: 100%;
+  padding: 0.85rem 1.15rem;
+  font-size: 0.925rem;
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: var(--font-sans);
+}
+
+.art-input::placeholder {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.art-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.3);
+  background: rgba(10, 18, 36, 0.95);
+}
+
+/* Password with toggle button */
+.art-password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.art-password-toggle {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.art-password-toggle:hover {
+  color: var(--accent-cyan);
+}
+
+/* Checkbox Row */
+.art-checkbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.825rem;
+}
+
+.art-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.art-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.art-forgot-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.825rem;
+  transition: color 0.2s;
+}
+
+.art-forgot-link:hover {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+}
+
+/* Primary Action Button: Electric Cyan Gradient */
+.art-btn-primary {
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00D4FF 0%, #0099FF 100%);
+  color: #050811;
+  font-size: 0.95rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.4);
+}
+
+.art-btn-primary:hover {
+  background: linear-gradient(135deg, #33DCFF 0%, #00B4FF 100%);
+  box-shadow: 0 0 32px rgba(0, 212, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+/* Divider 'or' */
+.art-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1.1rem 0;
+  position: relative;
+}
+
+.art-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.art-divider span {
+  position: relative;
+  background: rgba(13, 21, 39, 0.95);
+  padding: 0 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+/* Social Buttons */
+.art-social-btn {
+  width: 100%;
+  padding: 0.8rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.art-btn-google {
+  background: rgba(13, 21, 39, 0.8);
+  color: var(--text-main);
+  border: 1px solid var(--border-glass);
+}
+
+.art-btn-google:hover {
+  background: rgba(19, 30, 56, 0.95);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+.art-btn-apple {
+  background: rgba(13, 21, 39, 0.8);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  margin-top: 0.65rem;
+}
+
+.art-btn-apple:hover {
+  background: rgba(19, 30, 56, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+}
+
+/* Demo student quick login */
+.art-btn-demo {
+  margin-top: 0.65rem;
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--status-emerald);
+  border: 1px dashed rgba(16, 185, 129, 0.35);
+  font-size: 0.825rem;
+}
+
+.art-btn-demo:hover {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: var(--status-emerald);
+  color: #FFFFFF;
+}
+
+/* Bottom switch prompt */
+.art-auth-switch {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.art-switch-btn {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 0.35rem;
+  transition: opacity 0.2s;
+}
+
+.art-switch-btn:hover {
+  opacity: 0.85;
+}
+
+/* =========================================================
+   Responsive Stacking for Mobile
+   ========================================================= */
+@media (max-width: 820px) {
+  .art-auth-card {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    padding: 10px;
+  }
+
+  .art-auth-banner {
+    min-height: 240px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    border-radius: 18px;
+  }
+
+  .art-banner-content {
+    max-width: 100%;
+  }
+
+  .art-banner-title {
+    font-size: 2rem;
+  }
+
+  .art-banner-subtitle {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .art-auth-form-side {
+    padding: 2rem 1.25rem;
+  }
+}

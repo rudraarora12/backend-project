@@ -1,0 +1,25 @@
+/* Experience Submission Styles */
+.submit-container {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.submit-wizard-card {
+  padding: 2.5rem;
+  border-radius: var(--radius-xl);
+}
+
+.wizard-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 600px) {
+  .submit-wizard-card {
+    padding: 1.5rem;
+  }
+}
