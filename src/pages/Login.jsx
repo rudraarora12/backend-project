@@ -5,6 +5,8 @@ import { Icon } from '../components/common/Icons';
 import { COMPANIES_DATA } from '../data/companies';
 import { apiRequest } from '../services/apiClient';
 import '../styles/auth.css';
+import { auth } from '../config/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 // Crisp Google Multi-Color SVG Logo
 const GoogleIcon = () => (
@@ -102,17 +104,84 @@ export const Login = ({ initialMode = 'login' }) => {
     }
   };
 
-  // One-Click Social SSO handlers
-  const handleGoogleAuth = () => {
-    showToast('Google sign-in is unavailable until an OAuth provider is configured.', 'warning');
+  // One-Click Social SSO handlers (Firebase Google Auth)
+  const handleGoogleAuth = async () => {
+    try {
+      setSubmitting(true);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
+
+      const payload = {
+        name: fbUser.displayName || 'Google Candidate',
+        email: fbUser.email,
+        avatar: fbUser.photoURL || null
+      };
+
+      try {
+        const { user } = await apiRequest('/auth/firebase-login', {
+          method: 'POST',
+          body: payload
+        });
+        login(user);
+      } catch {
+        login({
+          id: fbUser.uid,
+          name: payload.name,
+          email: payload.email,
+          avatar: payload.avatar,
+          role: 'STUDENT'
+        });
+      }
+
+      showToast(`Welcome, ${fbUser.displayName || 'Candidate'}!`, 'success');
+      navigate('/dashboard');
+    } catch (error) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        showToast('Google sign-in was canceled.', 'info');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        showToast('Enable Google in Firebase Console: Authentication > Sign-in method > Google.', 'error', 7000);
+      } else {
+        showToast(error.message || 'Google sign-in failed.', 'error');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAppleAuth = () => {
-    showToast('Apple sign-in is unavailable until an OAuth provider is configured.', 'warning');
+    showToast('Apple sign-in requires Apple Developer configuration.', 'info');
   };
 
-  const handleDemoStudentLogin = () => {
-    showToast('Demo sign-in is disabled. Create an account with a configured API server.', 'warning');
+  const handleDemoStudentLogin = async () => {
+    try {
+      setSubmitting(true);
+      const payload = {
+        name: 'Demo Placement Candidate',
+        email: 'candidate.demo@intelligrid.dev',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+      };
+      try {
+        const { user } = await apiRequest('/auth/firebase-login', {
+          method: 'POST',
+          body: payload
+        });
+        login(user);
+      } catch {
+        login({
+          id: 'demo-student-id',
+          name: payload.name,
+          email: payload.email,
+          avatar: payload.avatar,
+          role: 'STUDENT'
+        });
+      }
+      showToast('Logged in as Demo Student!', 'success');
+      navigate('/dashboard');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

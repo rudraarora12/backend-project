@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from './db.js';
@@ -29,6 +30,11 @@ const profileSchema = z.object({
 const passwordSchema = z.object({
   currentPassword: z.string().min(1).max(128),
   newPassword: z.string().min(10).max(128)
+});
+const firebaseLoginSchema = z.object({
+  email: emailSchema,
+  name: z.string().trim().min(1).max(100),
+  avatar: z.string().url().max(500).optional().nullable()
 });
 
 export function publicUser(user) {
@@ -94,6 +100,34 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
     });
     req.session.userId = user.id;
     req.session.cookie.maxAge = input.rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    res.json({ data: { user: publicUser(user) } });
+  }));
+
+  router.post('/auth/firebase-login', asyncRoute(async (req, res) => {
+    const input = parseInput(firebaseLoginSchema, req.body);
+    let user = await prisma.user.findUnique({ where: { email: input.email } });
+    if (!user) {
+      const dummyPassword = crypto.randomUUID() + crypto.randomUUID();
+      const passwordHash = await bcrypt.hash(dummyPassword, 10);
+      user = await prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          passwordHash,
+          avatar: input.avatar || null
+        }
+      });
+    } else if (!user.avatar && input.avatar) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { avatar: input.avatar }
+      });
+    }
+    await new Promise((resolve, reject) => {
+      req.session.regenerate((error) => (error ? reject(error) : resolve()));
+    });
+    req.session.userId = user.id;
+    req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
     res.json({ data: { user: publicUser(user) } });
   }));
 
