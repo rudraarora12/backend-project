@@ -9,6 +9,9 @@ const registrationSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: emailSchema,
   password: z.string().min(10).max(128),
+  role: z.enum(['STUDENT', 'EXPERT']).default('STUDENT'),
+  companyName: z.string().trim().max(100).optional(),
+  roleTitle: z.string().trim().max(100).optional(),
   college: z.string().trim().max(150).optional(),
   degree: z.string().trim().max(150).optional(),
   branch: z.string().trim().max(150).optional(),
@@ -17,6 +20,7 @@ const registrationSchema = z.object({
 const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1).max(128),
+  role: z.enum(['STUDENT', 'EXPERT']).optional(),
   rememberMe: z.boolean().default(false)
 });
 const profileSchema = z.object({
@@ -70,17 +74,45 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
   router.post('/auth/register', registerLimiter, asyncRoute(async (req, res) => {
     const input = parseInput(registrationSchema, req.body);
     const passwordHash = await bcrypt.hash(input.password, 12);
+    const userRole = input.role || 'STUDENT';
     const user = await prisma.user.create({
       data: {
         name: input.name,
         email: input.email,
         passwordHash,
-        college: input.college,
-        degree: input.degree,
-        branch: input.branch,
-        graduationYear: input.graduationYear
+        role: userRole,
+        college: input.college || null,
+        degree: input.degree || null,
+        branch: input.branch || null,
+        graduationYear: input.graduationYear || null
       }
     });
+
+    // If registered as Partner / Expert, create initial verified mentor profile
+    if (userRole === 'EXPERT') {
+      try {
+        const companyName = input.companyName || 'Amazon';
+        const companySlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        await prisma.mentorProfile.create({
+          data: {
+            ownerKey: `user:${user.id}`,
+            userId: user.id,
+            companyName,
+            companySlug,
+            roleTitle: input.roleTitle || 'Senior Software Engineer & Interview Partner',
+            biography: `Verified industry partner and placement mentor at ${companyName}. Experienced in campus placement rounds, technical mock interviews, and behavioral STAR debriefs.`,
+            topics: ['DSA & Algorithms', 'System Architecture', 'Bar Raiser Mock', 'STAR Behavioral'],
+            price: 999,
+            currency: 'INR',
+            status: 'VERIFIED',
+            isDemo: false
+          }
+        });
+      } catch (e) {
+        console.warn('Could not auto-generate mentor profile for partner:', e.message);
+      }
+    }
+
     await new Promise((resolve, reject) => {
       req.session.regenerate((error) => error ? reject(error) : resolve());
     });
@@ -95,11 +127,76 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
     if (!user || !passwordValid || user.status !== 'ACTIVE') {
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     }
+
+    // Role verification if specific role tab was selected
+    if (input.role && user.role !== input.role && user.role !== 'ADMIN') {
+      if (input.role === 'EXPERT' && user.role === 'STUDENT') {
+        throw new ApiError(403, 'ROLE_MISMATCH', 'This account is registered as a Student. Please switch to the "Student" login tab, or register a new Partner account.');
+      }
+      if (input.role === 'STUDENT' && user.role === 'EXPERT') {
+        throw new ApiError(403, 'ROLE_MISMATCH', 'This account is registered as an Industry Partner. Please switch to the "Partner" login tab.');
+      }
+    }
+
     await new Promise((resolve, reject) => {
       req.session.regenerate((error) => error ? reject(error) : resolve());
     });
     req.session.userId = user.id;
     req.session.cookie.maxAge = input.rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    res.json({ data: { user: publicUser(user) } });
+  }));
+
+  // Demo Fast Partner Login
+  router.post('/auth/demo-partner', asyncRoute(async (req, res) => {
+    const demoPartnerEmail = 'partner.arjun@intelligrid.dev';
+    let user = await prisma.user.findUnique({ where: { email: demoPartnerEmail } });
+
+    if (!user) {
+      const dummyPassword = crypto.randomUUID() + crypto.randomUUID();
+      const passwordHash = await bcrypt.hash(dummyPassword, 10);
+      user = await prisma.user.create({
+        data: {
+          name: 'Arjun Mehta',
+          email: demoPartnerEmail,
+          passwordHash,
+          role: 'EXPERT',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+          college: 'IIT Delhi Alum',
+          degree: 'B.Tech Computer Science'
+        }
+      });
+
+      try {
+        await prisma.mentorProfile.create({
+          data: {
+            ownerKey: `user:${user.id}`,
+            userId: user.id,
+            companyName: 'Amazon',
+            companySlug: 'amazon',
+            roleTitle: 'Senior SDE & Bar Raiser Partner',
+            biography: 'Amazon Bar Raiser and Senior SDE with 6+ years evaluating placement loops, distributed systems, and leadership principles.',
+            topics: ['Amazon SDE Rounds', 'Distributed Systems', 'LP & Behavioral', 'Live Coding Practice'],
+            price: 999,
+            currency: 'INR',
+            status: 'VERIFIED',
+            isDemo: false
+          }
+        });
+      } catch (err) {
+        console.warn('Demo partner profile creation note:', err.message);
+      }
+    } else if (user.role !== 'EXPERT') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'EXPERT' }
+      });
+    }
+
+    await new Promise((resolve, reject) => {
+      req.session.regenerate((error) => (error ? reject(error) : resolve()));
+    });
+    req.session.userId = user.id;
+    req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
     res.json({ data: { user: publicUser(user) } });
   }));
 

@@ -115,6 +115,28 @@ export const Navbar = () => {
               {link.label}
             </NavLink>
           ))}
+          {user?.role === 'EXPERT' && (
+            <NavLink
+              to="/partner"
+              style={({ isActive }) => ({
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                color: isActive ? '#FFFFFF' : '#C4B5FD',
+                textDecoration: 'none',
+                padding: '0.35rem 0.8rem',
+                borderRadius: 'var(--radius-full)',
+                background: isActive ? 'linear-gradient(135deg, rgba(108, 99, 255, 0.4) 0%, rgba(0, 212, 255, 0.3) 100%)' : 'rgba(108, 99, 255, 0.15)',
+                border: '1px solid rgba(108, 99, 255, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                boxShadow: isActive ? '0 0 15px rgba(108, 99, 255, 0.4)' : 'none'
+              })}
+            >
+              <Icon name="shield" size={14} color="#A78BFA" />
+              <span>Partner Phase</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* Action Controls & Profile Menu */}
@@ -181,8 +203,33 @@ export const Navbar = () => {
                 >
                   <div style={{ padding: '0.5rem 0.75rem 0.75rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.25rem' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#FFFFFF' }}>{user.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.college || 'Engineering Candidate'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {user.role === 'EXPERT' ? 'Verified Industry Partner & Mentor' : (user.college || 'Engineering Candidate')}
+                    </div>
                   </div>
+
+                  {user.role === 'EXPERT' && (
+                    <Link
+                      to="/partner"
+                      className="dropdown-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        padding: '0.55rem 0.75rem',
+                        color: '#C4B5FD',
+                        fontSize: '0.85rem',
+                        borderRadius: 'var(--radius-sm)',
+                        textDecoration: 'none',
+                        background: 'rgba(108, 99, 255, 0.15)',
+                        border: '1px solid rgba(108, 99, 255, 0.3)',
+                        marginBottom: '0.35rem'
+                      }}
+                    >
+                      <Icon name="shield" size={16} color="var(--accent-purple)" />
+                      <strong style={{ color: '#FFFFFF' }}>Partner Phase Desk</strong>
+                    </Link>
+                  )}
 
                   <Link
                     to="/dashboard"
@@ -240,6 +287,27 @@ export const Navbar = () => {
                     <Icon name="shield" size={16} color="var(--accent-purple)" />
                     <span>Moderation Desk</span>
                   </Link>
+
+                  {user.role !== 'EXPERT' && (
+                    <Link
+                      to="/login?role=partner"
+                      className="dropdown-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        padding: '0.55rem 0.75rem',
+                        color: '#C4B5FD',
+                        fontSize: '0.85rem',
+                        borderRadius: 'var(--radius-sm)',
+                        textDecoration: 'none',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <Icon name="users" size={16} color="var(--accent-purple)" />
+                      <span>Switch to Partner Mode</span>
+                    </Link>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '0.35rem', paddingTop: '0.35rem' }}>
                     <button

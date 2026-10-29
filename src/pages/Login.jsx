@@ -46,6 +46,13 @@ export const Login = ({ initialMode = 'login' }) => {
   const isLoginRoute = location.pathname.includes('login');
   const [mode, setMode] = useState(isLoginRoute ? 'login' : initialMode);
 
+  // Two distinct login phases: Student vs Partner / Contributor
+  const searchParams = new URLSearchParams(location.search);
+  const initialRole = searchParams.get('role') === 'partner' ? 'partner' : 'student';
+  const [accountRole, setAccountRole] = useState(initialRole); // 'student' | 'partner'
+  const [partnerCompany, setPartnerCompany] = useState('Amazon');
+  const [partnerRoleTitle, setPartnerRoleTitle] = useState('Senior Software Engineer & Bar Raiser');
+
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields
@@ -75,7 +82,16 @@ export const Login = ({ initialMode = 'login' }) => {
     try {
       const { user } = await apiRequest('/auth/register', {
         method: 'POST',
-        body: { name: fullName, email: email.trim(), password }
+        body: {
+          name: fullName,
+          email: email.trim(),
+          password,
+          role: accountRole === 'partner' ? 'EXPERT' : 'STUDENT',
+          ...(accountRole === 'partner' ? {
+            companyName: partnerCompany.trim() || 'Amazon',
+            roleTitle: partnerRoleTitle.trim() || 'Senior Software Engineer'
+          } : {})
+        }
       });
       login(user);
       navigate('/dashboard');
@@ -93,7 +109,12 @@ export const Login = ({ initialMode = 'login' }) => {
     try {
       const { user } = await apiRequest('/auth/login', {
         method: 'POST',
-        body: { email: loginEmail.trim(), password: loginPassword, rememberMe }
+        body: {
+          email: loginEmail.trim(),
+          password: loginPassword,
+          role: accountRole === 'partner' ? 'EXPERT' : 'STUDENT',
+          rememberMe
+        }
       });
       login(user);
       navigate('/dashboard');
@@ -184,6 +205,20 @@ export const Login = ({ initialMode = 'login' }) => {
     }
   };
 
+  const handleDemoPartnerLogin = async () => {
+    try {
+      setSubmitting(true);
+      const { user } = await apiRequest('/auth/demo-partner', { method: 'POST' });
+      login(user);
+      showToast('Logged in as Verified Partner (Arjun Mehta - Amazon)!', 'success');
+      navigate('/partner');
+    } catch (error) {
+      showToast(error.message || 'Unable to log in as partner.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="auth-page-container">
       <div className="art-auth-card">
@@ -217,14 +252,73 @@ export const Login = ({ initialMode = 'login' }) => {
 
         {/* Right Column: Clean Form Layout */}
         <div className="art-auth-form-side">
+          {/* Dual Phase Selector: Student vs Partner */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '0.5rem',
+            background: 'rgba(0,0,0,0.4)',
+            padding: '0.35rem',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-glass)',
+            marginBottom: '1.5rem'
+          }}>
+            <button
+              type="button"
+              onClick={() => setAccountRole('student')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                padding: '0.65rem 0.5rem',
+                borderRadius: 'var(--radius-md)',
+                border: accountRole === 'student' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                background: accountRole === 'student' ? 'rgba(0, 212, 255, 0.15)' : 'transparent',
+                color: accountRole === 'student' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: accountRole === 'student' ? '0 0 15px rgba(0, 212, 255, 0.2)' : 'none'
+              }}
+            >
+              <span>🎓 Student Login</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAccountRole('partner')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                padding: '0.65rem 0.5rem',
+                borderRadius: 'var(--radius-md)',
+                border: accountRole === 'partner' ? '1px solid var(--accent-purple)' : '1px solid transparent',
+                background: accountRole === 'partner' ? 'rgba(108, 99, 255, 0.2)' : 'transparent',
+                color: accountRole === 'partner' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: accountRole === 'partner' ? '0 0 15px rgba(108, 99, 255, 0.25)' : 'none'
+              }}
+            >
+              <span>🤝 Partner Login</span>
+            </button>
+          </div>
           <div className="art-form-header">
             <h2 className="art-form-title">
-              {mode === 'register' ? 'Sign Up' : 'Sign In'}
+              {accountRole === 'partner'
+                ? (mode === 'register' ? 'Join as Partner' : 'Partner Sign In')
+                : (mode === 'register' ? 'Student Sign Up' : 'Student Sign In')}
             </h2>
             <p className="art-form-subtitle">
               {mode === 'register'
-                ? 'Enter your details to create your placement account'
-                : 'Enter your credentials to access your interview workspace'}
+                ? (accountRole === 'partner' ? 'Enter your details to create your verified Partner profile' : 'Enter your details to create your placement student account')
+                : (accountRole === 'partner' ? 'Access candidate mock evaluations, debrief publishing, and honorarium.' : 'Enter your credentials to access your interview workspace')}
             </p>
           </div>
 
@@ -257,12 +351,37 @@ export const Login = ({ initialMode = 'login' }) => {
                 <input
                   type="email"
                   className="art-input"
-                  placeholder="Email address" autoComplete="email"
+                  placeholder={accountRole === 'partner' ? 'Work / Partner email' : 'Email address'} autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
+
+              {accountRole === 'partner' && mode === 'register' && (
+                <>
+                  <div>
+                    <input
+                      type="text"
+                      className="art-input"
+                      placeholder="Current Company (e.g. Amazon, Google, Microsoft)"
+                      value={partnerCompany}
+                      onChange={(e) => setPartnerCompany(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      className="art-input"
+                      placeholder="Role Title (e.g. Senior Software Engineer)"
+                      value={partnerRoleTitle}
+                      onChange={(e) => setPartnerRoleTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="art-password-wrapper">
                 <input
@@ -324,11 +443,11 @@ export const Login = ({ initialMode = 'login' }) => {
 
               <button
                 type="button"
-                onClick={handleDemoStudentLogin}
+                onClick={accountRole === 'partner' ? handleDemoPartnerLogin : handleDemoStudentLogin}
                 className="art-social-btn art-btn-demo"
               >
                 <Icon name="sparkles" size={14} color="#00D4FF" />
-                <span>One-Click Fast Demo Student Login</span>
+                <span>{accountRole === 'partner' ? 'One-Click Fast Demo Partner Login (Arjun Mehta - Amazon)' : 'One-Click Fast Demo Student Login'}</span>
               </button>
             </form>
           ) : (
@@ -338,12 +457,37 @@ export const Login = ({ initialMode = 'login' }) => {
                 <input
                   type="email"
                   className="art-input"
-                  placeholder="Email address" autoComplete="email"
+                  placeholder={accountRole === 'partner' ? 'Work / Partner email' : 'Email address'} autoComplete="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
                 />
               </div>
+
+              {accountRole === 'partner' && mode === 'register' && (
+                <>
+                  <div>
+                    <input
+                      type="text"
+                      className="art-input"
+                      placeholder="Current Company (e.g. Amazon, Google, Microsoft)"
+                      value={partnerCompany}
+                      onChange={(e) => setPartnerCompany(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      className="art-input"
+                      placeholder="Role Title (e.g. Senior Software Engineer)"
+                      value={partnerRoleTitle}
+                      onChange={(e) => setPartnerRoleTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="art-password-wrapper">
                 <input
@@ -414,11 +558,11 @@ export const Login = ({ initialMode = 'login' }) => {
 
               <button
                 type="button"
-                onClick={handleDemoStudentLogin}
+                onClick={accountRole === 'partner' ? handleDemoPartnerLogin : handleDemoStudentLogin}
                 className="art-social-btn art-btn-demo"
               >
                 <Icon name="sparkles" size={14} color="#00D4FF" />
-                <span>One-Click Fast Demo Student Login</span>
+                <span>{accountRole === 'partner' ? 'One-Click Fast Demo Partner Login (Arjun Mehta - Amazon)' : 'One-Click Fast Demo Student Login'}</span>
               </button>
             </form>
           )}

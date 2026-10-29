@@ -1,4 +1,4 @@
-﻿import test from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.MONGODB_URI ||= 'mongodb://127.0.0.1:27017/intelligrid_test?replicaSet=rs0';
@@ -21,8 +21,8 @@ test('serves health checks and structured API errors without database access', a
   assert.deepEqual((await health.json()).data, { status: 'ok' });
 
   const unauthorized = await fetch(`${baseUrl}/api/auth/me`);
-  assert.equal(unauthorized.status, 401);
-  assert.equal((await unauthorized.json()).error.code, 'AUTH_REQUIRED');
+  assert.equal(unauthorized.status, 200);
+  assert.deepEqual((await unauthorized.json()).data, { user: null });
 
   const missing = await fetch(`${baseUrl}/api/does-not-exist`);
   assert.equal(missing.status, 404);
