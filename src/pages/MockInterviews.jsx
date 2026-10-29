@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getAllMentors } from '../services/connectService';
 import { apiRequest } from '../services/apiClient';
@@ -137,12 +137,147 @@ export const MockInterviews = () => {
   }, [bookings]);
 
   // ==========================================
-  // TAB 3: SIMULATED VIDEO ROOM STATE
+  // TAB 3: SIMULATED VIDEO ROOM STATE & WEBCAM
   // ==========================================
   const [micActive, setMicActive] = useState(true);
-  const [videoActive, setVideoActive] = useState(true);
+  const [videoActive, setVideoActive] = useState(false);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
   const [screenShareActive, setScreenShareActive] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+
+  // Stop camera stream safely
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setVideoActive(false);
+  }, []);
+
+  // Request native webcam access
+  const startCamera = useCallback(async () => {
+    setIsCameraStarting(true);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support mediaDevices API.');
+      }
+
+      // Prompt browser native camera permission popup
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
+        audio: false // mute local feed to avoid speaker audio loops
+      });
+
+      streamRef.current = stream;
+      setVideoActive(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+
+      showToast('Camera active! Live webcam feed connected.', 'success');
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setVideoActive(false);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        showToast('Camera permission was blocked. Please allow camera access in your browser address bar.', 'warning');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        showToast('No camera device detected on this system.', 'warning');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        showToast('Camera is currently in use by another application.', 'warning');
+      } else {
+        showToast(`Unable to activate webcam: ${err.message}`, 'error');
+      }
+    } finally {
+      setIsCameraStarting(false);
+    }
+  }, [showToast]);
+
+  const toggleVideo = useCallback(() => {
+    if (videoActive) {
+      stopCamera();
+      showToast('Webcam turned off.', 'info');
+    } else {
+      startCamera();
+    }
+  }, [videoActive, stopCamera, startCamera]);
+
+  const toggleMic = useCallback(() => {
+    setMicActive((prev) => {
+      const next = !prev;
+      showToast(next ? 'Microphone unmuted.' : 'Microphone muted.', 'info');
+      return next;
+    });
+  }, [showToast]);
+
+  const toggleScreenShare = useCallback(async () => {
+    if (screenShareActive) {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
+        screenStreamRef.current = null;
+      }
+      setScreenShareActive(false);
+      showToast('Screen sharing stopped.', 'info');
+      return;
+    }
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        showToast('Screen sharing is not supported by your browser.', 'warning');
+        return;
+      }
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      screenStreamRef.current = screenStream;
+      setScreenShareActive(true);
+      showToast('Screen sharing active.', 'success');
+
+      screenStream.getVideoTracks()[0].onended = () => {
+        setScreenShareActive(false);
+        screenStreamRef.current = null;
+      };
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') {
+        showToast(`Screen share failed: ${err.message}`, 'warning');
+      }
+    }
+  }, [screenShareActive, showToast]);
+
+  // Clean up streams on tab switch or unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentTab !== 'room') {
+      stopCamera();
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current = null;
+      }
+      setScreenShareActive(false);
+    }
+  }, [currentTab, stopCamera]);
 
   const [activeRightTab, setActiveRightTab] = useState('editor'); // 'editor' | 'prompt'
   const [code, setCode] = useState(`// IntelliGrid Collaborative Coding Pad
@@ -678,29 +813,144 @@ class LRUCache {
                   </div>
 
                   {/* Student Box */}
-                  <div className="video-feed-box" style={{ height: '220px' }}>
+                  <div className="video-feed-box" style={{ height: '220px', background: '#020408' }}>
                     {videoActive ? (
-                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #091024 0%, #030611 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-cyan)' }}
+                      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <video
+                          ref={(el) => {
+                            videoRef.current = el;
+                            if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                              el.srcObject = streamRef.current;
+                              el.play().catch(() => {});
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                          muted
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transform: 'scaleX(-1)',
+                            display: 'block'
+                          }}
                         />
-                        <span style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Camera Active (Self View)</span>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '0.65rem',
+                            right: '0.65rem',
+                            background: 'rgba(0, 0, 0, 0.75)',
+                            backdropFilter: 'blur(6px)',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.05em',
+                            color: 'var(--status-emerald)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            zIndex: 2
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: 'var(--status-emerald)',
+                              boxShadow: '0 0 8px var(--status-emerald)'
+                            }}
+                          />
+                          <span>LIVE WEBCAM</span>
+                        </div>
                       </div>
                     ) : (
-                      <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Camera Muted</div>
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(135deg, #091024 0%, #030611 100%)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '1rem',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '0.6rem',
+                            color: 'var(--text-dim)'
+                          }}
+                        >
+                          <Icon name="video-off" size={22} />
+                        </div>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                          Camera is turned off
+                        </span>
+                        <button
+                          type="button"
+                          onClick={toggleVideo}
+                          disabled={isCameraStarting}
+                          className="btn btn-primary btn-sm"
+                          style={{
+                            fontSize: '0.75rem',
+                            padding: '0.35rem 0.85rem',
+                            borderRadius: 'var(--radius-full)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <Icon name="video" size={13} />
+                          <span>{isCameraStarting ? 'Requesting Permission...' : 'Turn On Webcam'}</span>
+                        </button>
+                      </div>
                     )}
 
-                    <div style={{ position: 'absolute', bottom: '0.75rem', left: '0.75rem', background: 'rgba(0,0,0,0.7)', padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', color: '#FFFFFF' }}>
-                      You ({user.name})
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '0.75rem',
+                        left: '0.75rem',
+                        background: 'rgba(0,0,0,0.75)',
+                        backdropFilter: 'blur(4px)',
+                        padding: '0.3rem 0.65rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        zIndex: 3
+                      }}
+                    >
+                      <span>You ({user.name})</span>
+                      {!micActive && (
+                        <span style={{ color: 'var(--status-crimson)', display: 'inline-flex', alignItems: 'center' }} title="Microphone Muted">
+                          <Icon name="mic-off" size={12} />
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Media Control Bar */}
                   <div className="video-controls-bar">
                     <button
-                      onClick={() => setMicActive(!micActive)}
+                      type="button"
+                      onClick={toggleMic}
                       className={`btn-icon ${!micActive ? 'active-mute' : ''}`}
                       title={micActive ? 'Mute Mic' : 'Unmute Mic'}
                       style={{
@@ -709,39 +959,45 @@ class LRUCache {
                         border: '1px solid var(--border-glass)',
                         width: '42px',
                         height: '42px',
-                        borderRadius: '50%'
+                        borderRadius: '50%',
+                        cursor: 'pointer'
                       }}
                     >
                       <Icon name={micActive ? 'mic' : 'mic-off'} size={18} />
                     </button>
 
                     <button
-                      onClick={() => setVideoActive(!videoActive)}
+                      type="button"
+                      onClick={toggleVideo}
+                      disabled={isCameraStarting}
                       className={`btn-icon ${!videoActive ? 'active-mute' : ''}`}
-                      title={videoActive ? 'Turn Off Video' : 'Turn On Video'}
+                      title={videoActive ? 'Turn Off Webcam' : 'Turn On Webcam (Browser Permission)'}
                       style={{
-                        background: videoActive ? 'rgba(255,255,255,0.08)' : 'rgba(255, 77, 109, 0.2)',
-                        color: videoActive ? '#FFFFFF' : 'var(--status-crimson)',
-                        border: '1px solid var(--border-glass)',
+                        background: videoActive ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 77, 109, 0.2)',
+                        color: videoActive ? 'var(--accent-cyan)' : 'var(--status-crimson)',
+                        border: videoActive ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 77, 109, 0.4)',
                         width: '42px',
                         height: '42px',
-                        borderRadius: '50%'
+                        borderRadius: '50%',
+                        cursor: 'pointer'
                       }}
                     >
                       <Icon name={videoActive ? 'video' : 'video-off'} size={18} />
                     </button>
 
                     <button
-                      onClick={() => setScreenShareActive(!screenShareActive)}
+                      type="button"
+                      onClick={toggleScreenShare}
                       className="btn-icon"
-                      title="Share Screen"
+                      title={screenShareActive ? 'Stop Sharing' : 'Share Screen'}
                       style={{
                         background: screenShareActive ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255,255,255,0.08)',
                         color: screenShareActive ? 'var(--accent-cyan)' : '#FFFFFF',
-                        border: '1px solid var(--border-glass)',
+                        border: screenShareActive ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
                         width: '42px',
                         height: '42px',
-                        borderRadius: '50%'
+                        borderRadius: '50%',
+                        cursor: 'pointer'
                       }}
                     >
                       <Icon name="monitor" size={18} />
