@@ -11,10 +11,9 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Exactly FOUR primary navigation items in required order
+  // Exactly THREE primary navigation items (AI is now the floating widget)
   const navLinks = [
     { label: 'Company Prep', path: '/company-prep' },
-    { label: 'AI Roadmap', path: '/ai-roadmap' },
     { label: 'Mock Interviews', path: '/mock-interviews' },
     { label: 'Expert Chat', path: '/expert-chat' }
   ];

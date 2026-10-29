@@ -5,6 +5,7 @@ import { AppProvider } from './context/AppContext';
 // Effects & Layout
 import { GlobalBackground } from './components/effects/GlobalBackground';
 import { ParticleBackground } from './components/effects/ParticleBackground';
+import { AiChatWidget } from './components/effects/AiChatWidget';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { Preloader } from './components/layout/Preloader';
@@ -133,6 +134,9 @@ export function App() {
           {/* Global Backdrop Modal & Toast Container */}
           <Modal />
           <ToastContainer />
+
+          {/* Floating AI Chat Widget — Available on every page */}
+          <AiChatWidget />
         </div>
       </Router>
     </AppProvider>
