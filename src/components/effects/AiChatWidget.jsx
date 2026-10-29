@@ -90,16 +90,42 @@ const SUGGESTIONS = [
 ];
 
 function getClientFallback(query) {
-  const q = query.toLowerCase();
+  const raw = query.trim();
+  const q = raw.toLowerCase();
+
+  if (/^(hi|hello|hey|hey\s+chat|hi\s+bot|sup|howdy|good\s+morning|yo)[\s!.,?]*$/i.test(q)) {
+    return `Hey there! 👋 I'm **IntelliBot**, your AI interview prep assistant.
+
+How can I help you today? You can ask me:
+- 🏢 **Company Prep**: *"How does the Amazon SDE loop work?"*
+- ⭐ **Behavioral**: *"Explain the STAR method"*
+- 💡 **DSA & Core CS**: *"Dynamic Programming patterns"* or *"System Design"*
+- 🌐 **Website Help**: *"How to book a mock interview?"* or *"Where is my dashboard?"*`;
+  }
+
+  if (/^(thanks|thank you|thx|awesome|cool|great|ok|okay)[\s!.,?]*$/i.test(q)) {
+    return `You're very welcome! 😊 Feel free to ask anytime if you want to practice problems or prepare for an interview. Best of luck! 🚀`;
+  }
+
+  if (q.includes('how to use') || q.includes('about website') || q.includes('what is this website') || q.includes('how does this work')) {
+    return `### 🌐 Interview Intelligence Quick Guide
+
+1. **Company Prep**: Check 650+ tech companies, interview loop formats, and verified student logs.
+2. **Mock Interviews**: Book 1-on-1 mock calls with verified peer mentors.
+3. **Target Dashboard**: Track your consistency heatmap and milestones in real-time MongoDB!
+4. **Share Experience**: Click **+ Share Experience** in the navbar to log your recruitment rounds.`;
+  }
+
   if (q.includes('star') || q.includes('behavioral') || q.includes('hr')) {
     return `### ⭐ The STAR Method Framework
 
-1. **S - Situation**: Set the context of the challenge (company, team, project).
-2. **T - Task**: What was your specific goal or responsibility?
-3. **A - Action**: What specific architectural or coding steps did you take? (Focus on "I did").
-4. **R - Result**: Quantifiable outcome (e.g. "Latency dropped by 80%").`;
+1. **S - Situation (15%)**: Set the context of the challenge (project, team, deadline).
+2. **T - Task (15%)**: What was your specific goal or responsibility?
+3. **A - Action (50%)**: What specific architectural or coding steps did **you** take?
+4. **R - Result (20%)**: Quantifiable outcome (e.g. "Latency dropped by 80%").`;
   }
-  return `### 💡 Placement Tip for: "${query}"\n\nFocus on mastering core patterns: Two Pointers, Trees, Graphs, and DP. Always communicate your thought process aloud before writing code!`;
+
+  return `### 💡 Placement Tip for: "${raw}"\n\nFocus on mastering core patterns: Two Pointers, Trees, Graphs, and DP. Always communicate your thought process aloud before writing code!`;
 }
 
 export function AiChatWidget() {
