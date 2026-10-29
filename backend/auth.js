@@ -110,9 +110,17 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
     res.json({ data: { loggedOut: true } });
   }));
 
-  router.get('/auth/me', requireAuth, (req, res) => {
-    res.json({ data: { user: publicUser(req.user) } });
-  });
+  router.get('/auth/me', asyncRoute(async (req, res) => {
+    if (!req.session?.userId) {
+      return res.json({ data: { user: null } });
+    }
+    const user = await prisma.user.findUnique({ where: { id: req.session.userId } });
+    if (!user || user.status !== 'ACTIVE') {
+      req.session.destroy(() => {});
+      return res.json({ data: { user: null } });
+    }
+    res.json({ data: { user: publicUser(user) } });
+  }));
 
   router.patch('/users/me', requireAuth, asyncRoute(async (req, res) => {
     const input = parseInput(profileSchema, req.body);

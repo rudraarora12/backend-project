@@ -28,15 +28,17 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     let active = true;
-    apiRequest('/auth/me').then(({ user: sessionUser }) => {
+    apiRequest('/auth/me').then((data) => {
       if (!active) return;
-      setUser(sessionUser);
-      setIsAuthenticated(true);
-      // Load bookmarks once session is restored
-      loadBookmarksFromApi();
+      const sessionUser = data?.user;
+      if (sessionUser) {
+        setUser(sessionUser);
+        setIsAuthenticated(true);
+        loadBookmarksFromApi();
+      }
     }).catch((error) => {
-      if (!active || error instanceof ApiError && error.status === 401) return;
-      console.error('Unable to restore the server session:', error);
+      if (!active) return;
+      console.warn('Unable to restore the server session:', error);
     });
     return () => { active = false; };
   }, [loadBookmarksFromApi]);

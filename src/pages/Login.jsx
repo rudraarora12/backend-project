@@ -166,7 +166,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type="text"
                   className="art-input"
-                  placeholder="First name"
+                  placeholder="First name" autoComplete="given-name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
@@ -177,7 +177,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type="text"
                   className="art-input"
-                  placeholder="Last name"
+                  placeholder="Last name" autoComplete="family-name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
@@ -188,7 +188,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type="email"
                   className="art-input"
-                  placeholder="Email address"
+                  placeholder="Email address" autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -199,7 +199,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="art-input"
-                  placeholder="Password"
+                  placeholder="Password" autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={10}
@@ -269,7 +269,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type="email"
                   className="art-input"
-                  placeholder="Email address"
+                  placeholder="Email address" autoComplete="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
@@ -280,7 +280,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="art-input"
-                  placeholder="Password"
+                  placeholder="Password" autoComplete="current-password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
