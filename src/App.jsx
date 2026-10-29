@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 
 // Effects & Layout
 import { GlobalBackground } from './components/effects/GlobalBackground';
@@ -61,6 +61,74 @@ function LegacyCandidateRedirect() {
   return <Navigate to={`/mock-interviews?tab=mentors&mentor=${id}`} replace />;
 }
 
+function AppContent() {
+  const { user, isAuthenticated } = useApp();
+  const isPartner = isAuthenticated && user?.role === 'EXPERT';
+
+  return (
+    <div className="app-layout">
+      {/* Background Ambient Lighting and Particle Constellation Canvas */}
+      <GlobalBackground />
+      <ParticleBackground />
+
+      {/* Navigation Header - dynamically displays ONLY the 2 partner pages when logged in as Partner */}
+      <Navbar />
+
+      {/* Main Route Content */}
+      <main className="main-content">
+        <Routes>
+          {/* Public Landing View - if Partner, directs to their portal */}
+          <Route path="/" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <Landing />} />
+
+          {/* Student Primary Pages - Partner redirected to Partner Portal */}
+          <Route path="/company-prep" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <CompanyPrep />} />
+          <Route path="/ai-roadmap" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <AiRoadmap />} />
+          <Route path="/mock-interviews" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <MockInterviews />} />
+          <Route path="/expert-chat" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <ExpertChat />} />
+
+          {/* Contextual & Account Utility Routes */}
+          <Route path="/dashboard" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <Dashboard />} />
+          <Route path="/profile" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <Profile />} />
+          <Route path="/admin" element={<Admin />} />
+
+          {/* THE TWO PARTNER PHASE PAGES */}
+          <Route path="/partner" element={<PartnerPortal />} />
+          <Route path="/partner-portal" element={<Navigate to="/partner?tab=sessions" replace />} />
+
+          {/* Authentication Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* LEGACY ROUTE REDIRECTS PRESERVING PARAMETERS */}
+          <Route path="/companies" element={<Navigate to="/company-prep?tab=directory" replace />} />
+          <Route path="/company/:slug" element={<LegacyCompanyRedirect />} />
+          <Route path="/experiences" element={<Navigate to="/company-prep?tab=experiences" replace />} />
+          <Route path="/experience/:id" element={<LegacyExperienceRedirect />} />
+          <Route path="/preparation" element={<Navigate to="/ai-roadmap" replace />} />
+          <Route path="/questions" element={<Navigate to="/company-prep?tab=questions" replace />} />
+          <Route path="/interview-connect" element={<Navigate to="/mock-interviews" replace />} />
+          <Route path="/candidate/:id" element={<LegacyCandidateRedirect />} />
+          <Route path="/video-session" element={<Navigate to="/mock-interviews?tab=room" replace />} />
+          <Route path="/submit" element={isPartner ? <Navigate to="/partner?tab=publish" replace /> : <Navigate to="/company-prep?tab=submit" replace />} />
+
+          {/* Fallback route */}
+          <Route path="*" element={isPartner ? <Navigate to="/partner?tab=sessions" replace /> : <Landing />} />
+        </Routes>
+      </main>
+
+      {/* Platform Footer */}
+      <Footer />
+
+      {/* Global Backdrop Modal & Toast Container */}
+      <Modal />
+      <ToastContainer />
+
+      {/* Floating AI Chat Widget — Hidden for Partners to keep workspace purely focused on their 2 pages */}
+      {!isPartner && <AiChatWidget />}
+    </div>
+  );
+}
+
 export function App() {
   const [loading, setLoading] = useState(() => {
     return !sessionStorage.getItem('ii_preloader_seen');
@@ -74,73 +142,9 @@ export function App() {
   return (
     <AppProvider>
       {loading && <Preloader onFinish={handleFinishPreloader} />}
-
       <Router>
         <ScrollToTop />
-
-        <div className="app-layout">
-          {/* Background Ambient Lighting and Particle Constellation Canvas */}
-          <GlobalBackground />
-          <ParticleBackground />
-
-          {/* Sticky Navigation Header with Exactly FOUR Primary Links */}
-          <Navbar />
-
-          {/* Main Route Content */}
-          <main className="main-content">
-            <Routes>
-              {/* Public Landing View */}
-              <Route path="/" element={<Landing />} />
-
-              {/* EXACTLY FOUR PRIMARY NAVIGATION DESTINATIONS */}
-              {/* 1. Company Prep (Directory, Topic Intelligence, Experiences Feed/Detail, Question Bank, Submission) */}
-              <Route path="/company-prep" element={<CompanyPrep />} />
-
-              {/* 2. AI Roadmap (Setup Form, Adaptive Sprints, Daily Missions, Pomodoro Timer) */}
-              <Route path="/ai-roadmap" element={<AiRoadmap />} />
-
-              {/* 3. Mock Interviews (Mentor Directory, Booking Flow, My Bookings, Simulated Video Room) */}
-              <Route path="/mock-interviews" element={<MockInterviews />} />
-
-              {/* 4. Expert Chat (1-on-1 Direct Text Advisory, Domain Mentors, Client-side History) */}
-              <Route path="/expert-chat" element={<ExpertChat />} />
-
-              {/* Contextual & Account Utility Routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/partner" element={<PartnerPortal />} />
-              <Route path="/partner-portal" element={<Navigate to="/partner" replace />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* LEGACY ROUTE REDIRECTS PRESERVING PARAMETERS */}
-              <Route path="/companies" element={<Navigate to="/company-prep?tab=directory" replace />} />
-              <Route path="/company/:slug" element={<LegacyCompanyRedirect />} />
-              <Route path="/experiences" element={<Navigate to="/company-prep?tab=experiences" replace />} />
-              <Route path="/experience/:id" element={<LegacyExperienceRedirect />} />
-              <Route path="/preparation" element={<Navigate to="/ai-roadmap" replace />} />
-              <Route path="/questions" element={<Navigate to="/company-prep?tab=questions" replace />} />
-              <Route path="/interview-connect" element={<Navigate to="/mock-interviews" replace />} />
-              <Route path="/candidate/:id" element={<LegacyCandidateRedirect />} />
-              <Route path="/video-session" element={<Navigate to="/mock-interviews?tab=room" replace />} />
-              <Route path="/submit" element={<Navigate to="/company-prep?tab=submit" replace />} />
-
-              {/* Fallback route */}
-              <Route path="*" element={<Landing />} />
-            </Routes>
-          </main>
-
-          {/* Platform Footer */}
-          <Footer />
-
-          {/* Global Backdrop Modal & Toast Container */}
-          <Modal />
-          <ToastContainer />
-
-          {/* Floating AI Chat Widget — Available on every page */}
-          <AiChatWidget />
-        </div>
+        <AppContent />
       </Router>
     </AppProvider>
   );

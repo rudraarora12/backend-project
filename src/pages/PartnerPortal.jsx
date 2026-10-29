@@ -13,8 +13,8 @@ export const PartnerPortal = () => {
 
   const isPartner = isAuthenticated && (user?.role === 'EXPERT' || user?.role === 'ADMIN');
 
-  // Active tab in partner portal
-  const activeTab = searchParams.get('tab') || 'overview'; // 'overview' | 'sessions' | 'publish' | 'contributions'
+  // ONLY TWO DEDICATED PAGES/TABS: 'sessions' (Student Session Requests) OR 'publish' (Share Experience)
+  const activeTab = searchParams.get('tab') === 'publish' ? 'publish' : 'sessions';
 
   const handleTabChange = (newTab) => {
     const newParams = new URLSearchParams(searchParams);
@@ -22,16 +22,11 @@ export const PartnerPortal = () => {
     setSearchParams(newParams);
   };
 
-  // Partner data states
+  // Partner data & student sessions state
   const [loading, setLoading] = useState(false);
   const [partnerData, setPartnerData] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [activeSessionToEvaluate, setActiveSessionToEvaluate] = useState(null);
-
-  // Settings states
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [hourlyRate, setHourlyRate] = useState(999);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Evaluation Form state
   const [dsaRating, setDsaRating] = useState(5);
@@ -41,7 +36,7 @@ export const PartnerPortal = () => {
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [submittingEval, setSubmittingEval] = useState(false);
 
-  // Publish Form state
+  // Publish Experience Form state
   const [pubCompany, setPubCompany] = useState('Amazon');
   const [pubRole, setPubRole] = useState('SDE-1 (Campus Placement)');
   const [pubYear, setPubYear] = useState(2026);
@@ -52,56 +47,35 @@ export const PartnerPortal = () => {
   const [pubAdvice, setPubAdvice] = useState('');
   const [submittingPub, setSubmittingPub] = useState(false);
 
-  // Load partner stats & sessions
-  const loadPartnerStats = useCallback(async () => {
+  // Load partner data & student session requests
+  const loadPartnerData = useCallback(async () => {
     if (!isPartner) return;
     setLoading(true);
     try {
-      const { partner, metrics } = await apiRequest('/partner/stats');
+      const [{ partner, metrics }, { sessions: fetchedSessions }] = await Promise.all([
+        apiRequest('/partner/stats').catch(() => ({
+          partner: {
+            name: user.name || 'Arjun Mehta',
+            companyName: 'Amazon',
+            roleTitle: 'Senior Software Engineer & Bar Raiser'
+          },
+          metrics: { totalMentees: 24, mockSessionsCount: 38 }
+        })),
+        apiRequest('/partner/sessions').catch(() => ({ sessions: [] }))
+      ]);
+
       setPartnerData({ partner, metrics });
-      if (partner?.hourlyRate) setHourlyRate(partner.hourlyRate);
-      setIsAvailable(partner?.availabilityStatus === 'AVAILABLE');
-    } catch (err) {
-      console.warn('Using baseline partner metrics:', err.message);
-      // Fallback partner dataset
-      setPartnerData({
-        partner: {
-          name: user.name || 'Arjun Mehta',
-          companyName: 'Amazon',
-          roleTitle: 'Senior Software Engineer & Bar Raiser',
-          hourlyRate: 999,
-          availabilityStatus: 'AVAILABLE',
-          topics: ['Amazon SDE Rounds', 'Distributed Systems', 'STAR Behavioral', 'Live Coding Practice']
-        },
-        metrics: {
-          totalMentees: 24,
-          mockSessionsCount: 38,
-          verifiedExperiencesCount: 6,
-          averageRating: 4.94,
-          totalEarnings: 37962
-        }
-      });
+      setSessions(fetchedSessions || []);
     } finally {
       setLoading(false);
     }
   }, [isPartner, user.name]);
 
-  const loadPartnerSessions = useCallback(async () => {
-    if (!isPartner) return;
-    try {
-      const { sessions: fetchedSessions } = await apiRequest('/partner/sessions');
-      setSessions(fetchedSessions || []);
-    } catch {
-      // Handled gracefully with fallback data in backend/partner.js
-    }
-  }, [isPartner]);
-
   useEffect(() => {
     if (isPartner) {
-      loadPartnerStats();
-      loadPartnerSessions();
+      loadPartnerData();
     }
-  }, [isPartner, loadPartnerStats, loadPartnerSessions]);
+  }, [isPartner, loadPartnerData]);
 
   // Handle Demo Partner instant login
   const handleDemoPartnerLogin = async () => {
@@ -109,28 +83,9 @@ export const PartnerPortal = () => {
       const { user: partnerUser } = await apiRequest('/auth/demo-partner', { method: 'POST' });
       login(partnerUser);
       showToast('Logged in as Verified Partner (Arjun Mehta - Amazon)!', 'success');
-      navigate('/partner');
+      navigate('/partner?tab=sessions');
     } catch (error) {
       showToast(error.message || 'Unable to log in as partner.', 'error');
-    }
-  };
-
-  // Handle Settings Save
-  const handleSaveSettings = async () => {
-    setIsSavingSettings(true);
-    try {
-      await apiRequest('/partner/settings', {
-        method: 'PATCH',
-        body: {
-          hourlyRate: Number(hourlyRate),
-          availabilityStatus: isAvailable ? 'AVAILABLE' : 'AWAY'
-        }
-      });
-      showToast('Partner settings & hourly rate saved!', 'success');
-    } catch (err) {
-      showToast(err.message || 'Failed to update partner settings.', 'error');
-    } finally {
-      setIsSavingSettings(false);
     }
   };
 
@@ -170,7 +125,7 @@ export const PartnerPortal = () => {
         )
       );
 
-      showToast(`Evaluation for ${activeSessionToEvaluate.candidateName} submitted successfully!`, 'success');
+      showToast(`Evaluation for ${activeSessionToEvaluate.candidateName} recorded and sent to student!`, 'success');
       setActiveSessionToEvaluate(null);
       setFeedbackNotes('');
     } catch (err) {
@@ -207,8 +162,7 @@ export const PartnerPortal = () => {
 
       showToast(`Verified ${pubCompany} interview debrief published immediately!`, 'success');
       setPubAdvice('');
-      handleTabChange('overview');
-      loadPartnerStats();
+      handleTabChange('sessions');
     } catch (err) {
       showToast(err.message || 'Failed to publish partner experience.', 'error');
     } finally {
@@ -242,16 +196,16 @@ export const PartnerPortal = () => {
             </div>
 
             <div className="partner-header-badge" style={{ borderColor: 'rgba(255, 77, 109, 0.4)', color: 'var(--status-crimson)' }}>
-              <span>PARTNER PHASE ACCESS RESTRICTED</span>
+              <span>PARTNER ACCESS RESTRICTED</span>
             </div>
 
             <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
-              Partner & Mentor Phase Only
+              Partner Portal Only
             </h1>
 
             <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.6, marginBottom: '2rem' }}>
-              This portal is exclusively accessible to verified <strong>Industry Partners, Mentors, and Placement Contributors</strong>.
-              Students do not have permission to access candidate evaluation pads, grading scorecards, or partner honorarium settings.
+              This portal is exclusively accessible to verified <strong>Industry Partners & Placement Mentors</strong>.
+              Students do not have permission to access student booking requests, candidate evaluation pads, or debrief tools.
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
@@ -274,7 +228,7 @@ export const PartnerPortal = () => {
 
             <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '2.5rem', paddingTop: '1.5rem' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.85rem' }}>
-                Want to test the Partner Phase right away?
+                Want to test the Partner view right away?
               </span>
               <button
                 type="button"
@@ -293,19 +247,19 @@ export const PartnerPortal = () => {
   }
 
   // ==========================================
-  // VIEW B: AUTHENTICATED PARTNER PHASE
+  // VIEW B: AUTHENTICATED PARTNER PHASE (EXACTLY 2 PAGES)
   // ==========================================
   const partner = partnerData?.partner || {};
-  const metrics = partnerData?.metrics || {};
+  const pendingRequestsCount = sessions.filter((s) => s.status === 'PENDING_EVALUATION').length;
 
   return (
     <div className="partner-container">
       <div className="container">
-        {/* Top Header Banner */}
+        {/* Top Header: Partner Identity & The TWO Available Pages */}
         <div
           className="glass-panel"
           style={{
-            padding: '2rem',
+            padding: '1.75rem 2rem',
             borderRadius: 'var(--radius-xl)',
             marginBottom: '2rem',
             border: '1px solid rgba(108, 99, 255, 0.3)',
@@ -317,254 +271,98 @@ export const PartnerPortal = () => {
             gap: '1.5rem'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <img
               src={user.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'}
               alt={user.name}
               style={{
-                width: '80px',
-                height: '80px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
                 objectFit: 'cover',
-                border: '3px solid var(--accent-purple)',
-                boxShadow: '0 0 25px rgba(108, 99, 255, 0.4)'
+                border: '2px solid var(--accent-purple)',
+                boxShadow: '0 0 20px rgba(108, 99, 255, 0.4)'
               }}
             />
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
                   {user.name}
                 </h1>
                 <span className="partner-badge-verified">
-                  <Icon name="check" size={12} />
+                  <Icon name="check" size={11} />
                   <span>VERIFIED PARTNER</span>
                 </span>
                 <span className="badge badge-cyan">{partner.companyName || 'Amazon'}</span>
               </div>
-              <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                {partner.roleTitle || 'Senior Software Engineer & Bar Raiser'}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.85rem' }}>
-                <span style={{ color: isAvailable ? 'var(--status-emerald)' : '#F59E0B', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isAvailable ? 'var(--status-emerald)' : '#F59E0B' }} />
-                  <strong>{isAvailable ? 'Accepting Candidate Mocks' : 'Status: On Break'}</strong>
-                </span>
-                <span style={{ color: 'var(--text-dim)' }}>•</span>
-                <span style={{ color: 'var(--accent-cyan)' }}>
-                  Rate: <strong>₹{hourlyRate} / mock session</strong>
-                </span>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {partner.roleTitle || 'Senior Software Engineer & Bar Raiser'} • Exclusive Partner Portal
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={() => handleTabChange('publish')}
-              className="btn btn-primary btn-md"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <Icon name="plus" size={16} />
-              <span>Post Verified Debrief</span>
-            </button>
+          {/* TWO PRIMARY TABS TOGGLE */}
+          <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0, 0, 0, 0.4)', padding: '0.35rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
             <button
               onClick={() => handleTabChange('sessions')}
-              className="btn btn-purple btn-md"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                borderRadius: 'var(--radius-md)',
+                border: activeTab === 'sessions' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                background: activeTab === 'sessions' ? 'rgba(0, 212, 255, 0.2)' : 'transparent',
+                color: activeTab === 'sessions' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'sessions' ? '0 0 15px rgba(0, 212, 255, 0.2)' : 'none'
+              }}
             >
-              <Icon name="edit" size={16} />
-              <span>Candidate Desk ({sessions.filter((s) => s.status === 'PENDING_EVALUATION').length})</span>
+              <Icon name="video" size={16} />
+              <span>Student Session Requests</span>
+              <span
+                style={{
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  background: pendingRequestsCount > 0 ? 'var(--status-crimson)' : 'rgba(0, 212, 255, 0.2)',
+                  color: '#FFFFFF'
+                }}
+              >
+                {sessions.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('publish')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                borderRadius: 'var(--radius-md)',
+                border: activeTab === 'publish' ? '1px solid var(--accent-purple)' : '1px solid transparent',
+                background: activeTab === 'publish' ? 'rgba(108, 99, 255, 0.25)' : 'transparent',
+                color: activeTab === 'publish' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'publish' ? '0 0 15px rgba(108, 99, 255, 0.3)' : 'none'
+              }}
+            >
+              <Icon name="plus" size={16} />
+              <span>Share Experience</span>
             </button>
           </div>
         </div>
 
-        {/* Four Partner Metrics Cards */}
-        <div className="partner-metrics-grid">
-          <div className="partner-metric-card">
-            <div className="partner-metric-icon" style={{ background: 'rgba(0, 212, 255, 0.15)', color: 'var(--accent-cyan)' }}>
-              <Icon name="users" size={20} />
-            </div>
-            <div className="partner-metric-value">{metrics.totalMentees || 24}</div>
-            <div className="partner-metric-label">Mentees Mentored</div>
-          </div>
-
-          <div className="partner-metric-card">
-            <div className="partner-metric-icon" style={{ background: 'rgba(108, 99, 255, 0.15)', color: 'var(--accent-purple)' }}>
-              <Icon name="video" size={20} />
-            </div>
-            <div className="partner-metric-value">{metrics.mockSessionsCount || 38}</div>
-            <div className="partner-metric-label">Mock Sessions Completed</div>
-          </div>
-
-          <div className="partner-metric-card">
-            <div className="partner-metric-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--status-emerald)' }}>
-              <Icon name="file-text" size={20} />
-            </div>
-            <div className="partner-metric-value">{metrics.verifiedExperiencesCount || 6}</div>
-            <div className="partner-metric-label">Verified Debriefs Published</div>
-          </div>
-
-          <div className="partner-metric-card">
-            <div className="partner-metric-icon" style={{ background: 'rgba(255, 215, 0, 0.15)', color: '#FFD700' }}>
-              <Icon name="star" size={20} />
-            </div>
-            <div className="partner-metric-value">
-              {metrics.averageRating || 4.94} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 5.0</span>
-            </div>
-            <div className="partner-metric-label">Mentee Feedback Rating</div>
-          </div>
-        </div>
-
-        {/* Partner Navigation Tabs */}
-        <div className="partner-tabs-nav">
-          <button
-            className={`partner-tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => handleTabChange('overview')}
-          >
-            <Icon name="grid" size={16} />
-            <span>Partner Command Desk</span>
-          </button>
-
-          <button
-            className={`partner-tab-button ${activeTab === 'sessions' ? 'active' : ''}`}
-            onClick={() => handleTabChange('sessions')}
-          >
-            <Icon name="video" size={16} />
-            <span>Candidate Evaluation Desk</span>
-            <span style={{ padding: '0.15rem 0.5rem', background: 'rgba(0, 212, 255, 0.2)', borderRadius: '10px', fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
-              {sessions.length}
-            </span>
-          </button>
-
-          <button
-            className={`partner-tab-button ${activeTab === 'publish' ? 'active' : ''}`}
-            onClick={() => handleTabChange('publish')}
-          >
-            <Icon name="plus" size={16} />
-            <span>Publish Verified Debrief</span>
-          </button>
-
-          <button
-            className={`partner-tab-button ${activeTab === 'contributions' ? 'active' : ''}`}
-            onClick={() => handleTabChange('contributions')}
-          >
-            <Icon name="bookmark" size={16} />
-            <span>My Verified Intel</span>
-          </button>
-        </div>
-
         {/* ========================================================
-            TAB 1: COMMAND DESK & SETTINGS
-           ======================================================== */}
-        {activeTab === 'overview' && (
-          <ScrollReveal direction="up">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem' }}>
-              {/* Left: Availability & Pricing Controls */}
-              <div className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-xl)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <Icon name="settings" size={18} color="var(--accent-cyan)" />
-                  <span>Availability & Fee Configuration</span>
-                </h3>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {/* Status Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.95rem' }}>Accepting Mock Bookings</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Students can discover and book 1-on-1 rounds with you.</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsAvailable(!isAvailable)}
-                      className="btn btn-sm"
-                      style={{
-                        background: isAvailable ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 77, 109, 0.2)',
-                        color: isAvailable ? 'var(--status-emerald)' : 'var(--status-crimson)',
-                        borderColor: isAvailable ? 'var(--status-emerald)' : 'var(--status-crimson)'
-                      }}
-                    >
-                      {isAvailable ? '🟢 Online' : '⏸ Paused'}
-                    </button>
-                  </div>
-
-                  {/* Hourly Rate */}
-                  <div>
-                    <label className="input-label">Mock Interview Session Rate (INR)</label>
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      <span style={{ fontSize: '1.1rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>₹</span>
-                      <input
-                        type="number"
-                        className="search-input"
-                        style={{ maxWidth: '180px' }}
-                        value={hourlyRate}
-                        onChange={(e) => setHourlyRate(e.target.value)}
-                        min={0}
-                        max={10000}
-                        step={100}
-                      />
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ 60 min session</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveSettings}
-                    disabled={isSavingSettings}
-                    className="btn btn-primary btn-sm"
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    <span>{isSavingSettings ? 'Saving...' : 'Save Settings'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Right: Partner Honorarium & Topics */}
-              <div className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-xl)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <Icon name="sparkles" size={18} color="var(--accent-purple)" />
-                  <span>Partner Honorarium & Topics</span>
-                </h3>
-
-                <div style={{ background: 'rgba(108, 99, 255, 0.1)', border: '1px solid rgba(108, 99, 255, 0.3)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#C4B5FD', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-                    Accrued Mentorship Honorarium
-                  </div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FFFFFF' }}>
-                    ₹{(metrics.totalEarnings || 37962).toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                    Processed automatically to your registered payout account at end of month.
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '0.65rem' }}>
-                    Your Verified Evaluation Topics
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {(partner.topics || ['Amazon SDE Rounds', 'Distributed Systems', 'STAR Behavioral', 'Live Coding Practice']).map((t, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          background: 'rgba(0, 212, 255, 0.08)',
-                          border: '1px solid rgba(0, 212, 255, 0.25)',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '0.8rem',
-                          color: 'var(--accent-cyan)'
-                        }}
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* ========================================================
-            TAB 2: CANDIDATE EVALUATION DESK
+            PAGE 1: STUDENT SESSION REQUESTS & EVALUATION DESK
            ======================================================== */}
         {activeTab === 'sessions' && (
           <ScrollReveal direction="up">
@@ -572,10 +370,10 @@ export const PartnerPortal = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                    Candidate Mock Interview Submissions
+                    Incoming Student Mock Session Requests
                   </h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Review code, assess algorithmic depth, and submit official verified debrief scorecards for student mentees.
+                    Students request 1-on-1 rounds and submit code solutions for your partner evaluation.
                   </p>
                 </div>
               </div>
@@ -609,7 +407,7 @@ export const PartnerPortal = () => {
                             </span>
                           </div>
                           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                            {session.candidateCollege} • Target: <strong>{session.targetRole}</strong>
+                            {session.candidateCollege} • Target Role: <strong>{session.targetRole}</strong>
                           </div>
                         </div>
                       </div>
@@ -622,7 +420,7 @@ export const PartnerPortal = () => {
                         ) : (
                           <span className="partner-badge-verified">
                             <Icon name="check" size={11} />
-                            <span>Evaluation Recorded ({session.evaluation?.verdict || 'HIRE'})</span>
+                            <span>Evaluation Sent ({session.evaluation?.verdict || 'HIRE'})</span>
                           </span>
                         )}
                       </div>
@@ -819,7 +617,7 @@ export const PartnerPortal = () => {
         )}
 
         {/* ========================================================
-            TAB 3: PUBLISH VERIFIED COMPANY DEBRIEF
+            PAGE 2: SHARE INTERVIEW EXPERIENCE & DEBRIEFS
            ======================================================== */}
         {activeTab === 'publish' && (
           <ScrollReveal direction="up">
@@ -827,13 +625,13 @@ export const PartnerPortal = () => {
               <div style={{ marginBottom: '2rem' }}>
                 <span className="partner-badge-verified" style={{ marginBottom: '0.75rem' }}>
                   <Icon name="shield" size={12} />
-                  <span>EXCLUSIVE PARTNER PUBLISHING PRIVILEGE</span>
+                  <span>PARTNER INTERVIEW EXPERIENCE PUBLISHER</span>
                 </span>
                 <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#FFFFFF', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                  Publish Verified Company Interview Debrief
+                  Share Your Verified Interview Experience
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                  As an accredited Industry Partner, your contributed round structures and interview questions bypass the student moderation queue and are published immediately with an official Partner Verified seal.
+                  Share your real technical rounds, problem patterns, and Bar Raiser expectations. As a verified Partner, your experience is published immediately to the platform with an official Partner Verified seal.
                 </p>
               </div>
 
@@ -905,9 +703,9 @@ export const PartnerPortal = () => {
                 </div>
 
                 <div>
-                  <label className="input-label">Detailed Round-by-Round Breakdown & Bar Raiser Intel</label>
+                  <label className="input-label">Detailed Round-by-Round Breakdown & Questions Asked</label>
                   <textarea
-                    rows={6}
+                    rows={7}
                     className="textarea-input"
                     placeholder="Document each round in detail:
 • Round 1: OA (Hackerrank / Codility) - 2 questions on Trees & Dynamic Programming.
@@ -928,65 +726,10 @@ export const PartnerPortal = () => {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   >
                     <Icon name="check" size={18} />
-                    <span>{submittingPub ? 'Publishing Intel...' : 'Publish Verified Debrief to Live Feed'}</span>
+                    <span>{submittingPub ? 'Publishing Debrief...' : 'Publish Experience to Live Feed'}</span>
                   </button>
                 </div>
               </form>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* ========================================================
-            TAB 4: MY VERIFIED CONTRIBUTIONS
-           ======================================================== */}
-        {activeTab === 'contributions' && (
-          <ScrollReveal direction="up">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: 'var(--radius-xl)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                      <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                        Amazon SDE-1 Comprehensive On-Campus Loop Breakdown
-                      </h4>
-                      <span className="partner-badge-verified">Verified Partner Intel</span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Published by {user.name} • 2026 Campus Placement Cycle • ₹32 LPA CTC
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-                    <span>👁 1,420 views</span>
-                    <span>👍 189 helpful votes</span>
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.6, margin: 0 }}>
-                  Focus on Amazon's 16 Leadership Principles in depth. Every technical answer must be backed by concrete metrics and trade-off analysis. Make sure to vocalize edge cases on LRU cache eviction and cycle detection in directed graphs.
-                </p>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: 'var(--radius-xl)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                      <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                        Google Software Engineer (L3) Algorithmic Bar Standards
-                      </h4>
-                      <span className="partner-badge-verified">Verified Partner Intel</span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Published by {user.name} • Google SWE 2026 • ₹42 LPA CTC
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-                    <span>👁 980 views</span>
-                    <span>👍 142 helpful votes</span>
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.6, margin: 0 }}>
-                  Google interviewers strictly expect clean, modular code on first attempt without syntax errors. Practice writing algorithms on blank pads without IDE auto-completion.
-                </p>
-              </div>
             </div>
           </ScrollReveal>
         )}

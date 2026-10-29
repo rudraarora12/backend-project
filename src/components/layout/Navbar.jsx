@@ -5,14 +5,16 @@ import { Icon } from '../common/Icons';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useApp();
+  const isPartner = isAuthenticated && (user?.role === 'EXPERT');
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Exactly THREE primary navigation items (AI is now the floating widget)
-  const navLinks = [
+  // Primary navigation items for students
+  const studentNavLinks = [
     { label: 'Company Prep', path: '/company-prep' },
     { label: 'Mock Interviews', path: '/mock-interviews' },
     { label: 'Expert Chat', path: '/expert-chat' }
@@ -49,10 +51,10 @@ export const Navbar = () => {
         left: 0,
         right: 0,
         height: '74px',
-        backgroundColor: 'rgba(5, 8, 17, 0.88)',
+        backgroundColor: 'rgba(5, 8, 17, 0.92)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(0, 212, 255, 0.16)',
+        borderBottom: isPartner ? '1px solid rgba(108, 99, 255, 0.3)' : '1px solid rgba(0, 212, 255, 0.16)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center'
@@ -60,34 +62,38 @@ export const Navbar = () => {
     >
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         {/* Logo & Brand */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+        <Link to={isPartner ? '/partner?tab=sessions' : '/'} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
           <div
             style={{
               width: '38px',
               height: '38px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #00D4FF 0%, #6C63FF 100%)',
+              background: isPartner
+                ? 'linear-gradient(135deg, #A78BFA 0%, #6C63FF 100%)'
+                : 'linear-gradient(135deg, #00D4FF 0%, #6C63FF 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(0, 212, 255, 0.45)',
+              boxShadow: isPartner ? '0 0 16px rgba(108, 99, 255, 0.45)' : '0 0 16px rgba(0, 212, 255, 0.45)',
               flexShrink: 0
             }}
           >
-            <Icon name="sparkles" size={20} color="#050811" />
+            <Icon name={isPartner ? 'shield' : 'sparkles'} size={20} color="#050811" />
           </div>
           <div>
             <div style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ color: '#FFFFFF' }}>Interview</span>
-              <span className="text-cyan">Intelligence</span>
+              <span className={isPartner ? 'text-purple' : 'text-cyan'}>
+                {isPartner ? 'Partner' : 'Intelligence'}
+              </span>
             </div>
             <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              IntelliGrid 2.0
+              {isPartner ? 'PARTNER PHASE PORTAL' : 'INTELLIGRID 2.0'}
             </div>
           </div>
         </Link>
 
-        {/* Desktop Navigation Links — EXACTLY FOUR PRIMARY ITEMS */}
+        {/* Desktop Navigation Links */}
         <nav
           style={{
             display: 'flex',
@@ -96,55 +102,87 @@ export const Navbar = () => {
           }}
           className="desktop-nav"
         >
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.path}
-              to={link.path}
-              style={({ isActive }) => ({
-                fontSize: '0.925rem',
-                fontWeight: 600,
-                color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                textDecoration: 'none',
-                position: 'relative',
-                padding: '0.4rem 0',
-                transition: 'all 0.2s ease',
-                textShadow: isActive ? '0 0 12px rgba(0, 212, 255, 0.6)' : 'none',
-                borderBottom: isActive ? '2px solid var(--accent-cyan)' : '2px solid transparent'
-              })}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-          {user?.role === 'EXPERT' && (
-            <NavLink
-              to="/partner"
-              style={({ isActive }) => ({
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                color: isActive ? '#FFFFFF' : '#C4B5FD',
-                textDecoration: 'none',
-                padding: '0.35rem 0.8rem',
-                borderRadius: 'var(--radius-full)',
-                background: isActive ? 'linear-gradient(135deg, rgba(108, 99, 255, 0.4) 0%, rgba(0, 212, 255, 0.3) 100%)' : 'rgba(108, 99, 255, 0.15)',
-                border: '1px solid rgba(108, 99, 255, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: isActive ? '0 0 15px rgba(108, 99, 255, 0.4)' : 'none'
-              })}
-            >
-              <Icon name="shield" size={14} color="#A78BFA" />
-              <span>Partner Phase</span>
-            </NavLink>
+          {isPartner ? (
+            /* PARTNER ONLY: EXACTLY TWO DEDICATED PAGES */
+            <>
+              <NavLink
+                to="/partner?tab=sessions"
+                style={({ isActive }) => {
+                  const isCurrent = location.pathname.includes('partner') && (!location.search.includes('publish'));
+                  return {
+                    fontSize: '0.925rem',
+                    fontWeight: 700,
+                    color: isCurrent ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    textDecoration: 'none',
+                    position: 'relative',
+                    padding: '0.4rem 0',
+                    transition: 'all 0.2s ease',
+                    textShadow: isCurrent ? '0 0 12px rgba(0, 212, 255, 0.6)' : 'none',
+                    borderBottom: isCurrent ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  };
+                }}
+              >
+                <Icon name="video" size={17} />
+                <span>Student Session Requests</span>
+              </NavLink>
+
+              <NavLink
+                to="/partner?tab=publish"
+                style={({ isActive }) => {
+                  const isCurrent = location.pathname.includes('partner') && location.search.includes('publish');
+                  return {
+                    fontSize: '0.925rem',
+                    fontWeight: 700,
+                    color: isCurrent ? 'var(--accent-purple)' : 'var(--text-muted)',
+                    textDecoration: 'none',
+                    position: 'relative',
+                    padding: '0.4rem 0',
+                    transition: 'all 0.2s ease',
+                    textShadow: isCurrent ? '0 0 12px rgba(108, 99, 255, 0.6)' : 'none',
+                    borderBottom: isCurrent ? '2px solid var(--accent-purple)' : '2px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  };
+                }}
+              >
+                <Icon name="plus" size={17} />
+                <span>Share Experience</span>
+              </NavLink>
+            </>
+          ) : (
+            /* STUDENT NAVIGATION (WHEN NOT LOGGED IN AS PARTNER) */
+            studentNavLinks.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                style={({ isActive }) => ({
+                  fontSize: '0.925rem',
+                  fontWeight: 600,
+                  color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  textDecoration: 'none',
+                  position: 'relative',
+                  padding: '0.4rem 0',
+                  transition: 'all 0.2s ease',
+                  textShadow: isActive ? '0 0 12px rgba(0, 212, 255, 0.6)' : 'none',
+                  borderBottom: isActive ? '2px solid var(--accent-cyan)' : '2px solid transparent'
+                })}
+              >
+                {link.label}
+              </NavLink>
+            ))
           )}
         </nav>
 
         {/* Action Controls & Profile Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {/* Secondary CTA: Share Experience */}
+          {/* Top Right Quick Action: Share Experience */}
           <Link
-            to="/company-prep?tab=submit"
-            className="btn btn-primary btn-sm desktop-share-btn"
+            to={isPartner ? '/partner?tab=publish' : '/company-prep?tab=submit'}
+            className={isPartner ? 'btn btn-purple btn-sm desktop-share-btn' : 'btn btn-primary btn-sm desktop-share-btn'}
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem' }}
           >
             <Icon name="plus" size={15} />
@@ -159,8 +197,8 @@ export const Navbar = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.6rem',
-                  background: 'rgba(13, 21, 39, 0.85)',
-                  border: '1px solid var(--border-glass)',
+                  background: isPartner ? 'rgba(20, 15, 45, 0.9)' : 'rgba(13, 21, 39, 0.85)',
+                  border: isPartner ? '1px solid rgba(108, 99, 255, 0.4)' : '1px solid var(--border-glass)',
                   borderRadius: 'var(--radius-full)',
                   padding: '0.3rem 0.65rem 0.3rem 0.35rem',
                   cursor: 'pointer',
@@ -171,9 +209,15 @@ export const Navbar = () => {
                 aria-label="User Account Menu"
               >
                 <img
-                  src={user.avatar}
+                  src={user.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'}
                   alt={user.name}
-                  style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                  style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: isPartner ? '1px solid var(--accent-purple)' : '1px solid var(--accent-cyan)'
+                  }}
                 />
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.name.split(' ')[0]}
@@ -188,10 +232,10 @@ export const Navbar = () => {
                     position: 'absolute',
                     top: 'calc(100% + 10px)',
                     right: 0,
-                    width: '240px',
+                    width: '250px',
                     backgroundColor: 'rgba(10, 16, 32, 0.98)',
                     backdropFilter: 'blur(20px)',
-                    border: '1px solid var(--border-glass)',
+                    border: isPartner ? '1px solid rgba(108, 99, 255, 0.4)' : '1px solid var(--border-glass)',
                     borderRadius: 'var(--radius-lg)',
                     boxShadow: '0 15px 35px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 212, 255, 0.1)',
                     padding: '0.75rem',
@@ -202,111 +246,139 @@ export const Navbar = () => {
                   }}
                 >
                   <div style={{ padding: '0.5rem 0.75rem 0.75rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.25rem' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#FFFFFF' }}>{user.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>{user.name}</span>
+                      {isPartner && (
+                        <span style={{ fontSize: '0.65rem', background: 'rgba(108, 99, 255, 0.3)', color: '#C4B5FD', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: 800 }}>
+                          PARTNER
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {user.role === 'EXPERT' ? 'Verified Industry Partner & Mentor' : (user.college || 'Engineering Candidate')}
+                      {isPartner ? 'Verified Industry Partner & Mentor' : (user.college || 'Engineering Candidate')}
                     </div>
                   </div>
 
-                  {user.role === 'EXPERT' && (
-                    <Link
-                      to="/partner"
-                      className="dropdown-item"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.65rem',
-                        padding: '0.55rem 0.75rem',
-                        color: '#C4B5FD',
-                        fontSize: '0.85rem',
-                        borderRadius: 'var(--radius-sm)',
-                        textDecoration: 'none',
-                        background: 'rgba(108, 99, 255, 0.15)',
-                        border: '1px solid rgba(108, 99, 255, 0.3)',
-                        marginBottom: '0.35rem'
-                      }}
-                    >
-                      <Icon name="shield" size={16} color="var(--accent-purple)" />
-                      <strong style={{ color: '#FFFFFF' }}>Partner Phase Desk</strong>
-                    </Link>
-                  )}
+                  {isPartner ? (
+                    /* PARTNER DROPDOWN: ONLY THE 2 PAGES + LOGOUT */
+                    <>
+                      <Link
+                        to="/partner?tab=sessions"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--text-main)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="video" size={16} color="var(--accent-cyan)" />
+                        <span>Student Session Requests</span>
+                      </Link>
 
-                  <Link
-                    to="/dashboard"
-                    className="dropdown-item"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.65rem',
-                      padding: '0.55rem 0.75rem',
-                      color: 'var(--text-main)',
-                      fontSize: '0.85rem',
-                      borderRadius: 'var(--radius-sm)',
-                      textDecoration: 'none',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <Icon name="grid" size={16} color="var(--accent-cyan)" />
-                    <span>My Target Dashboard</span>
-                  </Link>
+                      <Link
+                        to="/partner?tab=publish"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--text-main)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="plus" size={16} color="var(--accent-purple)" />
+                        <span>Share Experience</span>
+                      </Link>
+                    </>
+                  ) : (
+                    /* STUDENT DROPDOWN */
+                    <>
+                      <Link
+                        to="/dashboard"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--text-main)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="grid" size={16} color="var(--accent-cyan)" />
+                        <span>My Target Dashboard</span>
+                      </Link>
 
-                  <Link
-                    to="/profile"
-                    className="dropdown-item"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.65rem',
-                      padding: '0.55rem 0.75rem',
-                      color: 'var(--text-main)',
-                      fontSize: '0.85rem',
-                      borderRadius: 'var(--radius-sm)',
-                      textDecoration: 'none',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <Icon name="bookmark" size={16} color="var(--accent-cyan)" />
-                    <span>Profile & Bookmarks</span>
-                  </Link>
+                      <Link
+                        to="/profile"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--text-main)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="bookmark" size={16} color="var(--accent-cyan)" />
+                        <span>Profile & Bookmarks</span>
+                      </Link>
 
-                  <Link
-                    to="/admin"
-                    className="dropdown-item"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.65rem',
-                      padding: '0.55rem 0.75rem',
-                      color: 'var(--text-main)',
-                      fontSize: '0.85rem',
-                      borderRadius: 'var(--radius-sm)',
-                      textDecoration: 'none',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <Icon name="shield" size={16} color="var(--accent-purple)" />
-                    <span>Moderation Desk</span>
-                  </Link>
+                      <Link
+                        to="/admin"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--text-main)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="shield" size={16} color="var(--accent-purple)" />
+                        <span>Moderation Desk</span>
+                      </Link>
 
-                  {user.role !== 'EXPERT' && (
-                    <Link
-                      to="/login?role=partner"
-                      className="dropdown-item"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.65rem',
-                        padding: '0.55rem 0.75rem',
-                        color: '#C4B5FD',
-                        fontSize: '0.85rem',
-                        borderRadius: 'var(--radius-sm)',
-                        textDecoration: 'none',
-                        transition: 'background 0.2s'
-                      }}
-                    >
-                      <Icon name="users" size={16} color="var(--accent-purple)" />
-                      <span>Switch to Partner Mode</span>
-                    </Link>
+                      <Link
+                        to="/login?role=partner"
+                        className="dropdown-item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: '#C4B5FD',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        <Icon name="users" size={16} color="var(--accent-purple)" />
+                        <span>Switch to Partner Mode</span>
+                      </Link>
+                    </>
                   )}
 
                   <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '0.35rem', paddingTop: '0.35rem' }}>
@@ -378,59 +450,106 @@ export const Navbar = () => {
             zIndex: 999
           }}
         >
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.path}
-              to={link.path}
-              onClick={() => setMobileMenuOpen(false)}
-              style={({ isActive }) => ({
-                fontSize: '1.05rem',
-                fontWeight: 600,
-                color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                padding: '0.6rem 0',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                textDecoration: 'none'
-              })}
-            >
-              {link.label}
-            </NavLink>
-          ))}
+          {isPartner ? (
+            /* MOBILE MENU FOR PARTNER: EXACTLY TWO PAGES */
+            <>
+              <NavLink
+                to="/partner?tab=sessions"
+                onClick={() => setMobileMenuOpen(false)}
+                style={({ isActive }) => ({
+                  fontSize: '1.05rem',
+                  fontWeight: 700,
+                  color: !location.search.includes('publish') ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  padding: '0.6rem 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                })}
+              >
+                <Icon name="video" size={18} />
+                <span>Student Session Requests</span>
+              </NavLink>
 
-          <Link
-            to="/company-prep?tab=submit"
-            onClick={() => setMobileMenuOpen(false)}
-            className="btn btn-primary btn-sm"
-            style={{ justifyContent: 'center', marginTop: '0.5rem' }}
-          >
-            <Icon name="plus" size={16} />
-            <span>Share Experience</span>
-          </Link>
+              <NavLink
+                to="/partner?tab=publish"
+                onClick={() => setMobileMenuOpen(false)}
+                style={({ isActive }) => ({
+                  fontSize: '1.05rem',
+                  fontWeight: 700,
+                  color: location.search.includes('publish') ? 'var(--accent-purple)' : 'var(--text-muted)',
+                  padding: '0.6rem 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                })}
+              >
+                <Icon name="plus" size={18} />
+                <span>Share Experience</span>
+              </NavLink>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
-            <Link
-              to="/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'none' }}
-            >
-              Target Dashboard
-            </Link>
-            <span style={{ color: 'var(--text-dim)' }}>•</span>
-            <Link
-              to="/profile"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'none' }}
-            >
-              Profile
-            </Link>
-            <span style={{ color: 'var(--text-dim)' }}>•</span>
-            <Link
-              to="/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'none' }}
-            >
-              Admin
-            </Link>
-          </div>
+              <button
+                onClick={handleLogout}
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--status-crimson)', justifyContent: 'center', marginTop: '1rem' }}
+              >
+                <Icon name="logout" size={16} />
+                <span>Sign Out</span>
+              </button>
+            </>
+          ) : (
+            /* MOBILE MENU FOR STUDENTS */
+            <>
+              {studentNavLinks.map((link) => (
+                <NavLink
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={({ isActive }) => ({
+                    fontSize: '1.05rem',
+                    fontWeight: 600,
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    padding: '0.6rem 0',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                    textDecoration: 'none'
+                  })}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+
+              <Link
+                to="/company-prep?tab=submit"
+                onClick={() => setMobileMenuOpen(false)}
+                className="btn btn-primary btn-sm"
+                style={{ justifyContent: 'center', marginTop: '0.5rem' }}
+              >
+                <Icon name="plus" size={16} />
+                <span>Share Experience</span>
+              </Link>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'none' }}
+                >
+                  Target Dashboard
+                </Link>
+                <span style={{ color: 'var(--text-dim)' }}>•</span>
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'none' }}
+                >
+                  Profile
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       )}
 
