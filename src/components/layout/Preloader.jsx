@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { COMPANIES_DATA } from '../../data/companies';
 
 export const Preloader = ({ onFinish }) => {
   const [progress, setProgress] = useState(15);
@@ -6,7 +7,7 @@ export const Preloader = ({ onFinish }) => {
 
   useEffect(() => {
     const steps = [
-      { p: 35, text: 'PARSING 650+ PLACEMENT INTELLIGENCE MATRICES...' },
+      { p: 35, text: `LOADING ${COMPANIES_DATA.length} COMPANY PROFILES...` },
       { p: 68, text: 'CALIBRATING TOPIC WEIGHTAGES & RECURRENCE PATTERNS...' },
       { p: 92, text: 'SYNCING CAMPUS VERIFIED HISTORICAL LOOPS...' },
       { p: 100, text: 'WORKSPACE READY. LAUNCHING...' }

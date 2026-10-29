@@ -1,4 +1,5 @@
 import { EXPERIENCES_DATA } from '../data/experiences';
+import { experiencesApi } from './api';
 
 export const CANONICAL_QUESTION_LINKS = {
   "lru cache": "https://leetcode.com/problems/lru-cache/",
@@ -50,14 +51,94 @@ export function getCanonicalQuestionUrl(rawTitle = '') {
 const STORAGE_KEY_EXPERIENCES = 'ii_experiences';
 const STORAGE_KEY_UPVOTES = 'ii_upvotes';
 
+// ============================================================
+// ASYNC API VERSIONS (backed by MongoDB via backend API)
+// ============================================================
+
 /**
- * Initialize or get all stored experiences
+ * Fetch all experiences from the backend.
+ * @param {object} params - Optional query params (page, limit, q, etc.)
+ * @returns {Promise<Array>}
+ */
+export async function getAllExperiencesAsync(params = {}) {
+  const result = await experiencesApi.list(params);
+  return result.experiences || [];
+}
+
+/**
+ * Fetch a single experience by ID from the backend.
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
+export async function getExperienceByIdAsync(id) {
+  const result = await experiencesApi.get(id);
+  return result.experience || null;
+}
+
+/**
+ * Submit a new interview experience to the backend.
+ * Maps frontend form data to the backend schema.
+ * @param {object} data - Frontend form data
+ * @returns {Promise<object>}
+ */
+export async function createExperienceAsync(data) {
+  const payload = {
+    company: data.company,
+    role: data.role,
+    year: Number(data.year),
+    channel: data.channel,
+    location: data.location,
+    result: data.result,
+    difficulty: Number(data.difficulty),
+    compensation: data.ctc,
+    prepAdvice: data.prepAdvice,
+    candidateExperience: data.candidateExperience,
+    anonymous: Boolean(data.anonymous),
+    rounds: (data.rounds || []).map((r) => ({
+      type: r.type,
+      duration: r.duration,
+      difficulty: r.difficulty,
+      topics: typeof r.topics === 'string' ? r.topics : (r.topics || []).join(', '),
+      questions: typeof r.questions === 'string' ? r.questions : (r.questions || []).join(', '),
+    }))
+  };
+  const result = await experiencesApi.create(payload);
+  return result.experience;
+}
+
+/**
+ * Toggle a helpful vote on an experience (backend).
+ * @param {string} experienceId
+ * @returns {Promise<{voted: boolean, votes: number}>}
+ */
+export async function toggleHelpfulVoteAsync(experienceId) {
+  const result = await experiencesApi.vote(experienceId);
+  return result;
+}
+
+// ============================================================
+// LEGACY SYNC VERSIONS — kept for backward compatibility
+// These read from localStorage / bundled static data.
+// @deprecated Use the Async equivalents above for live data.
+// ============================================================
+
+/**
+ * @deprecated Use getAllExperiencesAsync() for live backend data.
  */
 export function getAllExperiences() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_EXPERIENCES);
     if (stored) {
-      return JSON.parse(stored);
+      const experiences = JSON.parse(stored);
+      if (!Array.isArray(experiences)) throw new TypeError('Stored experiences must be an array.');
+      return experiences.map((experience) => ({
+        ...experience,
+        isDemo: true,
+        status: 'demo',
+        helpfulVotes: 0,
+        verified: false,
+        authorName: experience.anonymous ? 'Anonymous Demo Candidate' : 'Demo Candidate'
+      }));
     }
     // Seed default experiences
     localStorage.setItem(STORAGE_KEY_EXPERIENCES, JSON.stringify(EXPERIENCES_DATA));
@@ -69,7 +150,7 @@ export function getAllExperiences() {
 }
 
 /**
- * Get single experience by ID
+ * @deprecated Use getExperienceByIdAsync() for live backend data.
  */
 export function getExperienceById(id) {
   const list = getAllExperiences();
@@ -77,7 +158,7 @@ export function getExperienceById(id) {
 }
 
 /**
- * Add a new interview experience (submission wizard)
+ * @deprecated Use createExperienceAsync() for live backend data.
  */
 export function createExperience(submissionData) {
   const experiences = getAllExperiences();
@@ -125,12 +206,13 @@ export function createExperience(submissionData) {
     questions: extractedQuestions.length ? extractedQuestions : ['System Coding Question'],
     prepAdvice: submissionData.prepAdvice || 'Practice consistently on LeetCode Medium/Hard and stay calm during behavioral rounds.',
     candidateExperience: submissionData.candidateExperience || 'Overall smooth experience with supportive interviewers.',
-    status: 'approved', // Auto-approves for demo flow
-    helpfulVotes: 1,
+    status: 'demo',
+    isDemo: true,
+    helpfulVotes: 0,
     channel: submissionData.channel || 'On-Campus Drive',
     location: submissionData.location || 'Bangalore / Virtual',
     ctc: submissionData.ctc || 'Competitive Package',
-    verified: true
+    verified: false
   };
 
   const updated = [newExperience, ...experiences];
@@ -139,7 +221,7 @@ export function createExperience(submissionData) {
 }
 
 /**
- * Vote for an experience (upvote / unvote toggle)
+ * @deprecated Use toggleHelpfulVoteAsync() for live backend data.
  */
 export function toggleHelpfulVote(experienceId) {
   try {

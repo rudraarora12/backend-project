@@ -229,6 +229,20 @@ export const Icon = ({ name, size = 18, color = 'currentColor', className = '', 
           <polyline points="12 5 19 12 12 19" />
         </svg>
       );
+    case 'arrow-left':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+      );
+    case 'send':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      );
     case 'plus':
       return (
         <svg {...iconProps} viewBox="0 0 24 24">

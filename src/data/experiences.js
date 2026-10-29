@@ -1,4 +1,4 @@
-export const EXPERIENCES_DATA = [
+const bundledExperiences = [
   {
     id: "exp-1",
     company: "Amazon",
@@ -317,3 +317,12 @@ export const EXPERIENCES_DATA = [
     verified: true
   }
 ];
+
+export const EXPERIENCES_DATA = bundledExperiences.map((experience) => ({
+  ...experience,
+  isDemo: true,
+  status: 'demo',
+  helpfulVotes: 0,
+  verified: false,
+  authorName: experience.anonymous ? 'Anonymous Demo Candidate' : 'Demo Candidate'
+}));

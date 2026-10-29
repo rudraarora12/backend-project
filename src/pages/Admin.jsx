@@ -1,51 +1,72 @@
-import React, { useState } from 'react';
-import { INITIAL_ADMIN_QUEUE } from '../data/users';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { getAllExperiences } from '../services/experienceService';
+import React, { useState, useEffect } from 'react';
+import { apiRequest } from '../services/apiClient';
 import { useApp } from '../context/AppContext';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icons';
 
 export const Admin = () => {
   const { showToast } = useApp();
-  const [queue, setQueue] = useLocalStorage('ii_admin_queue', INITIAL_ADMIN_QUEUE);
+  const [queue, setQueue] = useState([]);
+  const [metrics, setMetrics] = useState({ experiences: {}, experts: {} });
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'approved' | 'flagged'
+  const [loading, setLoading] = useState(true);
+  const [pendingAction, setPendingAction] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const handleApprove = (item) => {
-    // Add to approved experiences
-    const experiences = getAllExperiences();
-    const approvedItem = {
-      ...item,
-      id: `exp_${Date.now()}`,
-      status: 'approved',
-      verified: true,
-      helpfulVotes: 1
-    };
-    localStorage.setItem('ii_experiences', JSON.stringify([approvedItem, ...experiences]));
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    Promise.all([
+      apiRequest(`/admin/experiences?status=${activeTab.toUpperCase()}&limit=100`),
+      apiRequest('/admin/metrics')
+    ]).then(([result, counts]) => {
+      if (!active) return;
+      setQueue(result.experiences.map((experience) => ({
+        ...experience,
+        company: experience.companyName,
+        ctc: experience.compensation,
+        authorName: experience.anonymous ? 'Anonymous Candidate' : experience.author?.name || 'Student Peer',
+        status: experience.status.toLowerCase(),
+        rounds: experience.rounds.map((round) => ({
+          ...round,
+          questions: round.questions.join(', ')
+        }))
+      })));
+      setMetrics(counts);
+    }).catch((error) => {
+      if (!active) return;
+      setQueue([]);
+      showToast(error.message || 'Unable to load the moderation queue.', 'error');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [activeTab, reloadKey, showToast]);
 
-    // Update queue status
-    setQueue((prev) =>
-      prev.map((q) => (q.id === item.id ? { ...q, status: 'approved' } : q))
-    );
-
-    showToast(`Approved interview record for ${item.company}! Added to public feed.`, 'success');
+  const moderateExperience = async (item, status) => {
+    if (pendingAction) return;
+    setPendingAction(item.id);
+    try {
+      await apiRequest(`/admin/experiences/${encodeURIComponent(item.id)}`, {
+        method: 'PATCH',
+        body: { status }
+      });
+      showToast(
+        status === 'APPROVED' ? `Approved the report for ${item.company}.` : 'Report flagged for review.',
+        'success'
+      );
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      showToast(error.message || 'Unable to update this report.', 'error');
+    } finally {
+      setPendingAction('');
+    }
   };
 
-  const handleFlag = (id) => {
-    setQueue((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, status: 'flagged' } : q))
-    );
-    showToast('Record flagged for review and hidden from public catalog.', 'info');
-  };
-
-  const filtered = queue.filter((item) => {
-    if (activeTab === 'all') return true;
-    return item.status === activeTab;
-  });
-
-  const pendingCount = queue.filter((q) => q.status === 'pending').length;
-  const approvedCount = queue.filter((q) => q.status === 'approved').length;
-  const flaggedCount = queue.filter((q) => q.status === 'flagged').length;
+  const filtered = queue;
+  const pendingCount = metrics.experiences.PENDING || 0;
+  const approvedCount = metrics.experiences.APPROVED || 0;
+  const flaggedCount = metrics.experiences.FLAGGED || 0;
 
   return (
     <div className="admin-page" style={{ paddingBottom: '4rem' }}>
@@ -60,7 +81,7 @@ export const Admin = () => {
             Placement Integrity & Review Desk
           </h1>
           <p className="page-subtitle">
-            Moderate and verify crowdsourced student interview submissions before indexing them into public recruitment pattern analytics.
+            Review server-submitted interview reports before they are visible as approved records.
           </p>
         </div>
 
@@ -84,7 +105,7 @@ export const Admin = () => {
             <div className="font-mono text-emerald" style={{ fontSize: '1.8rem', fontWeight: 800 }}>
               {approvedCount}
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Verified & Indexed</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Approved & Indexed</div>
           </div>
 
           <div className="glass-panel" style={{ padding: '1.25rem 1.5rem' }}>
@@ -118,7 +139,11 @@ export const Admin = () => {
         </div>
 
         {/* Submissions Queue Cards */}
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <h4 className="empty-state-title">Loading moderation records...</h4>
+          </div>
+        ) : filtered.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {filtered.map((item) => (
               <div
@@ -155,7 +180,8 @@ export const Admin = () => {
                   {item.status === 'pending' && (
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button
-                        onClick={() => handleFlag(item.id)}
+                        onClick={() => moderateExperience(item, 'FLAGGED')}
+                        disabled={pendingAction === item.id}
                         className="btn btn-secondary btn-sm"
                         style={{ color: 'var(--status-rose)', borderColor: 'rgba(244, 63, 94, 0.3)' }}
                       >
@@ -164,7 +190,8 @@ export const Admin = () => {
                       </button>
 
                       <button
-                        onClick={() => handleApprove(item)}
+                        onClick={() => moderateExperience(item, 'APPROVED')}
+                        disabled={pendingAction === item.id}
                         className="btn btn-primary btn-sm"
                       >
                         <Icon name="check" size={14} />
@@ -199,8 +226,8 @@ export const Admin = () => {
         ) : (
           <div className="empty-state">
             <Icon name="shield" size={48} className="empty-state-icon" />
-            <h4 className="empty-state-title">Moderation Queue is Clean!</h4>
-            <p className="empty-state-desc">There are no records currently categorized as "{activeTab}".</p>
+            <h4 className="empty-state-title">{activeTab === 'pending' ? 'No pending reports' : `No ${activeTab} reports`}</h4>
+            <p className="empty-state-desc">This view contains records from the configured backend moderation queue.</p>
           </div>
         )}
       </div>

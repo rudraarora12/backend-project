@@ -1,35 +1,65 @@
-import React, { useState } from 'react';
-import { createBooking } from '../../services/connectService';
+import React, { useEffect, useState } from 'react';
+import { apiRequest } from '../../services/apiClient';
 import { useApp } from '../../context/AppContext';
 import { Icon } from '../common/Icons';
 
-export const BookingModal = ({ mentor, onClose, onSuccess }) => {
-  const { showToast } = useApp();
-  const [selectedSlot, setSelectedSlot] = useState(mentor.availableSlots?.[0] || 'Tomorrow, 6:00 PM IST');
+export const BookingModal = ({ mentor: mentorProp, interviewer, onClose, onSuccess }) => {
+  const mentor = mentorProp || interviewer;
+  const { isAuthenticated, showToast } = useApp();
+  const [slots, setSlots] = useState([]);
+  const [selectedSlotId, setSelectedSlotId] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const selectedSlot = slots.find((slot) => slot.id === selectedSlotId);
 
-  const handleBooking = (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    setTimeout(() => {
-      const parts = selectedSlot.split(',');
-      const dateStr = parts[0]?.trim() || 'Tomorrow';
-      const timeStr = parts[1]?.trim() || '6:00 PM IST';
-
-      const booking = createBooking({
-        mentor,
-        date: dateStr,
-        time: timeStr,
-        notes
+  useEffect(() => {
+    let active = true;
+    if (!mentor || mentor.isDemo) {
+      setSlots([]);
+      return () => { active = false; };
+    }
+    apiRequest(`/experts/${encodeURIComponent(mentor.id)}/availability`)
+      .then(({ slots: availableSlots }) => {
+        if (!active) return;
+        setSlots(availableSlots);
+        setSelectedSlotId(availableSlots[0]?.id || '');
+      })
+      .catch((error) => {
+        if (active) showToast(error.message || 'Unable to load availability.', 'error');
       });
+    return () => { active = false; };
+  }, [mentor, showToast]);
 
-      setIsSubmitting(false);
+  if (!mentor) return null;
+
+  const handleBooking = async (e) => {
+    e.preventDefault();
+    if (mentor.isDemo) {
+      showToast('Sample profiles cannot be booked.', 'warning');
+      return;
+    }
+    if (!isAuthenticated) {
+      showToast('Sign in before booking a session.', 'warning');
+      return;
+    }
+    if (!selectedSlotId) {
+      showToast('This expert has no available sessions to book.', 'warning');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { booking } = await apiRequest('/bookings', {
+        method: 'POST',
+        body: { slotId: selectedSlotId, notes }
+      });
       showToast(`Mock session confirmed with ${mentor.name}! Booking ID: ${booking.id}`, 'success');
       if (onSuccess) onSuccess(booking);
       if (onClose) onClose();
-    }, 600);
+    } catch (error) {
+      showToast(error.message || 'Unable to reserve this session.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -95,17 +125,23 @@ export const BookingModal = ({ mentor, onClose, onSuccess }) => {
           <div className="form-group">
             <label className="form-label">Available Slots</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(mentor.availableSlots || []).map((slot) => (
+              {slots.map((slot) => {
+                const label = new Intl.DateTimeFormat(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                  timeZone: slot.timeZone
+                }).format(new Date(slot.startsAt));
+                return (
                 <label
-                  key={slot}
+                  key={slot.id}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: 'var(--radius-md)',
-                    background: selectedSlot === slot ? 'var(--accent-cyan-dim)' : 'rgba(7, 12, 24, 0.7)',
-                    border: `1px solid ${selectedSlot === slot ? 'var(--accent-cyan)' : 'var(--border-glass)'}`,
+                    background: selectedSlotId === slot.id ? 'var(--accent-cyan-dim)' : 'rgba(7, 12, 24, 0.7)',
+                    border: `1px solid ${selectedSlotId === slot.id ? 'var(--accent-cyan)' : 'var(--border-glass)'}`,
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
@@ -113,16 +149,22 @@ export const BookingModal = ({ mentor, onClose, onSuccess }) => {
                   <input
                     type="radio"
                     name="slot"
-                    value={slot}
-                    checked={selectedSlot === slot}
-                    onChange={() => setSelectedSlot(slot)}
+                    value={slot.id}
+                    checked={selectedSlotId === slot.id}
+                    onChange={() => setSelectedSlotId(slot.id)}
                     style={{ accentColor: 'var(--accent-cyan)' }}
                   />
-                  <span style={{ fontSize: '0.9rem', color: selectedSlot === slot ? '#FFFFFF' : 'var(--text-muted)', fontWeight: 500 }}>
-                    {slot}
+                  <span style={{ fontSize: '0.9rem', color: selectedSlotId === slot.id ? '#FFFFFF' : 'var(--text-muted)', fontWeight: 500 }}>
+                    {label} ({slot.timeZone})
                   </span>
                 </label>
-              ))}
+                );
+              })}
+              {slots.length === 0 && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  No live availability is currently published for this expert.
+                </p>
+              )}
             </div>
           </div>
 
@@ -152,11 +194,13 @@ export const BookingModal = ({ mentor, onClose, onSuccess }) => {
             }}
           >
             <div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>45-Minute 1-on-1 Simulated Mock</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Includes detailed technical rating debrief</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Session length is set by the expert</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Booking does not collect payment.</div>
             </div>
             <div className="font-mono text-emerald" style={{ fontSize: '1.3rem', fontWeight: 800 }}>
-              ₹{mentor.hourlyRate}
+              {selectedSlot?.price == null && mentor.hourlyRate == null
+                ? 'Rate not set'
+                : `${selectedSlot?.currency || mentor.currency || 'INR'} ${selectedSlot?.price ?? mentor.hourlyRate}`}
             </div>
           </div>
 
@@ -166,7 +210,7 @@ export const BookingModal = ({ mentor, onClose, onSuccess }) => {
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !slots.length || !isAuthenticated || mentor.isDemo}
             >
               Cancel
             </button>

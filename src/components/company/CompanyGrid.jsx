@@ -96,7 +96,7 @@ export const CompanyGrid = ({ companies = [] }) => {
           </div>
           <h4 className="empty-state-title">No companies matched "{searchQuery}"</h4>
           <p className="empty-state-desc">
-            Try adjusting your search criteria or resetting filters to browse all 650+ indexed tech firms.
+            Try adjusting your search criteria or resetting filters to browse all {companies.length} available company profiles.
           </p>
           <button
             className="btn btn-secondary btn-sm"

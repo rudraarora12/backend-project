@@ -1,0 +1,591 @@
+{
+  "info": {
+    "_postman_id": "0f8679dd-1a15-4f4a-9b5b-1e7a593f7470",
+    "name": "IntelliGrid Local API",
+    "description": "Local development API checks. Authentication uses Postman's cookie jar and the HTTP-only ii.sid session cookie, not bearer tokens. Booking and expert messaging success flows require an operator-provisioned verified expert and availability.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health and authentication",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('health returns 200 and ok', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ready"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('readiness reports database connectivity', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data).to.include({ status: 'ready', database: 'connected' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Protected route rejects unauthenticated request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{anonymousBaseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unauthenticated request is rejected', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.eql('AUTH_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register test user",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('testEmail', `intelligrid-${Date.now()}@example.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('registration creates a user and session', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.user).to.have.property('id');",
+                  "  pm.expect(body.data.user.email).to.eql(pm.environment.get('testEmail'));",
+                  "  pm.expect(body.data.user).not.to.have.property('passwordHash');",
+                  "  pm.environment.set('userId', body.data.user.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Log in",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"rememberMe\": false\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds and session cookie is issued', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.user.id).to.eql(pm.environment.get('userId'));",
+                  "  pm.expect(pm.cookies.has('ii.sid')).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('current user is authenticated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.user.id).to.eql(pm.environment.get('userId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Companies and experiences",
+      "item": [
+        {
+          "name": "List companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/companies?page=1&limit=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('company list is paginated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.companies).to.be.an('array');",
+                  "  pm.expect(data.pagination).to.have.property('total');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/questions?page=1&limit=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('question list is returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.questions).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit interview experience",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companySlug\": \"{{companySlug}}\",\n  \"company\": \"{{companyName}}\",\n  \"role\": \"Software Engineer Intern\",\n  \"year\": 2025,\n  \"prepAdvice\": \"Practice data structures, explain tradeoffs clearly, and review the fundamentals before the interview.\",\n  \"anonymous\": true,\n  \"rounds\": [\n    {\n      \"type\": \"Technical\",\n      \"topics\": [\"Arrays\", \"Data Structures\"],\n      \"questions\": [\"Postman sample interview question\"]\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/experiences"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('experience submission is pending moderation', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const experience = pm.response.json().data.experience;",
+                  "  pm.expect(experience).to.have.property('id');",
+                  "  pm.expect(experience.status).to.eql('PENDING');",
+                  "  pm.environment.set('experienceId', experience.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve submitted experience",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/experiences/{{experienceId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('experience is retrievable only after approval', function () {",
+                  "  pm.expect([200, 404]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 200) {",
+                  "    pm.expect(pm.response.json().data.experience.id).to.eql(pm.environment.get('experienceId'));",
+                  "  } else {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Roadmaps",
+      "item": [
+        {
+          "name": "Generate roadmap",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetCompany\": \"General\",\n  \"targetRole\": \"Backend Engineer\",\n  \"skillLevel\": \"beginner\",\n  \"durationDays\": 7,\n  \"dailyHours\": 2,\n  \"focusAreas\": [\"Data Structures\", \"Backend\"]\n}"
+            },
+            "url": "{{baseUrl}}/roadmaps/generate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('roadmap is generated and saved', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const roadmap = pm.response.json().data.roadmap;",
+                  "  pm.expect(roadmap).to.have.property('id');",
+                  "  pm.expect(roadmap.days).to.be.an('array').that.is.not.empty;",
+                  "  pm.environment.set('roadmapId', roadmap.id);",
+                  "  pm.environment.set('taskId', roadmap.days[0].tasks[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve roadmap",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roadmaps/{{roadmapId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('roadmap belongs to the logged-in user', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.roadmap.id).to.eql(pm.environment.get('roadmapId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update roadmap task progress",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completed\": true\n}"
+            },
+            "url": "{{baseUrl}}/roadmaps/{{roadmapId}}/tasks/{{taskId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('task completion updates roadmap progress', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const progress = pm.response.json().data.progress;",
+                  "  pm.expect(progress.completed).to.be.greaterThan(0);",
+                  "  pm.expect(progress.total).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bookings and messaging (verified expert prerequisites)",
+      "description": "Provision a verified, non-demo expert and future availability before running successful booking/chat requests. Set availableSlotId and expertId in the environment first.",
+      "item": [
+        {
+          "name": "Create booking for available slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{availableSlotId}}\",\n  \"notes\": \"Postman local API booking test\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('valid availability can be booked', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const booking = pm.response.json().data.booking;",
+                  "  pm.expect(booking.status).to.eql('CONFIRMED');",
+                  "  pm.environment.set('bookingId', booking.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject missing booking slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"000000000000000000000000\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unknown slot cannot be booked', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.eql('SLOT_UNAVAILABLE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject conflicting booking for consumed slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{availableSlotId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('consumed slot cannot be double-booked', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.eql('SLOT_UNAVAILABLE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create or retrieve conversation with expert",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expertId\": \"{{expertId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('conversation is created for the selected expert', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const conversation = pm.response.json().data.conversation;",
+                  "  pm.expect(conversation).to.have.property('id');",
+                  "  pm.environment.set('conversationId', conversation.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Postman local API message test\",\n  \"clientId\": \"postman-{{userId}}-message-1\"\n}"
+            },
+            "url": "{{baseUrl}}/conversations/{{conversationId}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('message is sent in the authorized conversation', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.message.content).to.eql('Postman local API message test');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/conversations/{{conversationId}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('conversation messages are returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.messages).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Logout",
+      "item": [
+        {
+          "name": "Log out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logout destroys the session', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.loggedOut).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user is unauthorized after logout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logout invalidates the session cookie', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.eql('AUTH_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

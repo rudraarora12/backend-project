@@ -38,7 +38,9 @@ export const ExperienceCard = ({ experience }) => {
                 >
                   {experience.company}
                 </Link>
-                {experience.verified && (
+                {experience.isDemo ? (
+                  <Badge variant="purple" size="sm">Sample</Badge>
+                ) : experience.verified && (
                   <span title="Verified Placement Record" style={{ color: 'var(--accent-cyan)', display: 'flex' }}>
                     <Icon name="shield" size={15} />
                   </span>
@@ -79,7 +81,7 @@ export const ExperienceCard = ({ experience }) => {
             <span>•</span>
             <span>Batch {experience.year}</span>
             <span>•</span>
-            <span style={{ color: 'var(--status-emerald)', fontWeight: 600 }}>{experience.ctc}</span>
+            {experience.ctc && <span style={{ color: 'var(--status-emerald)', fontWeight: 600 }}>{experience.ctc}</span>}
           </div>
 
           {/* Topics Tag List */}
@@ -132,7 +134,11 @@ export const ExperienceCard = ({ experience }) => {
             gap: '0.5rem'
           }}
         >
-          <HelpfulVoteBtn experienceId={experience.id} initialVotes={experience.helpfulVotes || 0} />
+          <HelpfulVoteBtn
+            experienceId={experience.id}
+            initialVotes={experience.helpfulVotes || 0}
+            isDemo={experience.isDemo}
+          />
 
           <Link
             to={`/company-prep?tab=experiences&id=${experience.id}`}

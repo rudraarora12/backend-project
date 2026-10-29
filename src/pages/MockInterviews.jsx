@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getAllMentors, getMentorById, getBookings, completeSessionReview } from '../services/connectService';
+import { getAllMentors } from '../services/connectService';
+import { apiRequest } from '../services/apiClient';
 import { InterviewerCard } from '../components/connect/InterviewerCard';
 import { BookingModal } from '../components/connect/BookingModal';
 import { Icon } from '../components/common/Icons';
@@ -12,7 +13,7 @@ import '../styles/connect.css';
 export const MockInterviews = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, showToast } = useApp();
+  const { user, isAuthenticated, showToast } = useApp();
 
   const currentTab = searchParams.get('tab') || 'mentors'; // 'mentors' | 'bookings' | 'room'
   const mentorIdParam = searchParams.get('mentor');
@@ -27,7 +28,7 @@ export const MockInterviews = () => {
   // ==========================================
   // TAB 1: MENTOR DIRECTORY & PROFILES
   // ==========================================
-  const mentors = getAllMentors();
+  const [mentors, setMentors] = useState(getAllMentors);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
   const [activeMentorToBook, setActiveMentorToBook] = useState(null);
@@ -35,15 +36,44 @@ export const MockInterviews = () => {
 
   const companies = ['All', 'Amazon', 'Google', 'Microsoft', 'Goldman Sachs', 'Uber', 'D. E. Shaw'];
 
+  useEffect(() => {
+    let active = true;
+    apiRequest('/experts')
+      .then(({ experts }) => {
+        if (!active) return;
+        setMentors(experts.map((expert) => ({
+          id: expert.id,
+          name: expert.name,
+          company: expert.companyName,
+          companySlug: expert.companySlug,
+          role: expert.roleTitle,
+          avatar: expert.avatar,
+          bio: expert.biography,
+          topics: expert.topics,
+          hourlyRate: expert.price,
+          currency: expert.currency,
+          interviewResult: 'Verified expert',
+          rating: null,
+          reviewCount: expert.reviewCount,
+          isDemo: false
+        })));
+      })
+      .catch((error) => {
+        if (active) showToast(`Live expert directory unavailable: ${error.message}`, 'warning');
+      });
+    return () => { active = false; };
+  }, [showToast]);
+
   // Check if mentor parameter in URL
   useEffect(() => {
     if (mentorIdParam) {
-      const m = getMentorById(mentorIdParam);
+      const m = mentors.find((mentor) => String(mentor.id) === String(mentorIdParam));
       if (m) setDetailedMentor(m);
+      else setDetailedMentor(null);
     } else {
       setDetailedMentor(null);
     }
-  }, [mentorIdParam]);
+  }, [mentorIdParam, mentors]);
 
   const filteredMentors = useMemo(() => {
     return mentors.filter((m) => {
@@ -62,11 +92,41 @@ export const MockInterviews = () => {
   // ==========================================
   // TAB 2: MY BOOKINGS STATE
   // ==========================================
-  const [bookings, setBookings] = useState(() => getBookings());
+  const [bookings, setBookings] = useState([]);
+  const refreshBookings = useCallback(async () => {
+    if (!isAuthenticated) {
+      setBookings([]);
+      return;
+    }
+    try {
+      const { bookings: records } = await apiRequest('/bookings');
+      setBookings(records.map((booking) => {
+        const startsAt = new Date(booking.startsAt);
+        const endsAt = new Date(booking.endsAt);
+        return {
+          ...booking,
+          candidateName: booking.mentor.user?.name || 'Expert',
+          candidateAvatar: booking.mentor.user?.avatar,
+          company: booking.mentor.companyName,
+          role: booking.mentor.roleTitle,
+          date: startsAt.toLocaleDateString(),
+          time: startsAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: booking.timeZone }),
+          duration: `${Math.round((endsAt - startsAt) / 60000)} minutes`,
+          price: booking.price,
+          status: booking.status === 'COMPLETED'
+            ? 'Completed'
+            : booking.status === 'CANCELLED'
+              ? 'Cancelled'
+              : startsAt > new Date() ? 'Upcoming' : 'Awaiting Completion'
+        };
+      }));
+    } catch (error) {
+      setBookings([]);
+      showToast(error.message || 'Unable to load your bookings.', 'error');
+    }
+  }, [isAuthenticated, showToast]);
 
-  const refreshBookings = () => {
-    setBookings(getBookings());
-  };
+  useEffect(() => { void refreshBookings(); }, [refreshBookings]);
 
   const upcomingBookings = useMemo(() => {
     return bookings.filter((b) => b.status === 'Upcoming');
@@ -142,22 +202,25 @@ class LRUCache {
     setOutputConsole('Executing in IntelliGrid Sandbox VM...\n\n> Compiled successfully.\n> Test Case 1: get(1) -> returns 1 [PASS]\n> Test Case 2: put(3, 3) -> evicts key 2 [PASS]\n> Test Case 3: get(2) -> returns -1 [PASS]\n\nExecution Time: 42ms | Memory: 14.8MB');
   };
 
-  const handleSaveDebrief = () => {
-    const bookingToReview = upcomingBookings[0] || bookings[0];
-    const bookingId = bookingToReview ? bookingToReview.id : 'II-SAMPLE';
-
-    completeSessionReview(bookingId, {
-      dsaRating,
-      codeQualityRating,
-      communicationRating,
-      notes: debriefNotes,
-      sessionDuration: sessionTime
-    });
-
-    showToast('Mock session debrief and rating scorecard saved!', 'success');
-    setShowDebriefModal(false);
-    refreshBookings();
-    handleTabChange('bookings');
+  const handleSaveDebrief = async () => {
+    const bookingToReview = completedBookings[0];
+    if (!bookingToReview) {
+      showToast('A server-confirmed completed booking is required to submit a review.', 'warning');
+      return;
+    }
+    try {
+      const rating = Math.round((dsaRating + codeQualityRating + communicationRating) / 3);
+      await apiRequest(`/bookings/${encodeURIComponent(bookingToReview.id)}/review`, {
+        method: 'POST',
+        body: { rating, comment: debriefNotes }
+      });
+      showToast('Review saved to your completed booking.', 'success');
+      setShowDebriefModal(false);
+      await refreshBookings();
+      handleTabChange('bookings');
+    } catch (error) {
+      showToast(error.message || 'Unable to submit the session review.', 'error');
+    }
   };
 
   return (
@@ -173,7 +236,7 @@ class LRUCache {
             Peer & Mentor Mock Interviews
           </h1>
           <p className="page-subtitle">
-            Book 45-minute technical mocks, system design grills, and behavioral deep-dives with placed seniors from top tech enterprises.
+            Sample profiles are illustrative only. Real booking becomes available when verified experts publish availability in the configured backend.
           </p>
         </div>
 
@@ -261,8 +324,8 @@ class LRUCache {
                         <span className="badge badge-cyan">
                           {detailedMentor.company}
                         </span>
-                        <Badge variant="selected" size="sm">
-                          {detailedMentor.interviewResult}
+                        <Badge variant={detailedMentor.isDemo ? 'purple' : 'selected'} size="sm">
+                          {detailedMentor.isDemo ? 'Sample profile' : detailedMentor.interviewResult}
                         </Badge>
                       </div>
 
@@ -271,23 +334,29 @@ class LRUCache {
                       </div>
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <Icon name="star" size={14} color="#FFD700" />
-                          <strong style={{ color: '#FFFFFF' }}>{detailedMentor.rating.toFixed(2)}</strong> ({detailedMentor.reviewCount} verified mocks)
-                        </span>
-                        <span>•</span>
-                        <span>Drive Year: <strong style={{ color: '#FFFFFF' }}>{detailedMentor.interviewYear}</strong></span>
-                        <span>•</span>
-                        <span>Rate: <strong style={{ color: 'var(--status-emerald)' }}>₹{detailedMentor.hourlyRate} / 45 min</strong></span>
+                        {detailedMentor.isDemo ? (
+                          <span>Sample details only; no verified reviews, rates, or availability.</span>
+                        ) : (
+                          <>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <Icon name="star" size={14} color="#FFD700" />
+                              <strong style={{ color: '#FFFFFF' }}>{detailedMentor.rating?.toFixed(2) || 'New'}</strong> ({detailedMentor.reviewCount} reviews)
+                            </span>
+                            <span>•</span>
+                            <span>Rate: <strong style={{ color: 'var(--status-emerald)' }}>{detailedMentor.hourlyRate == null ? 'Not set' : `₹${detailedMentor.hourlyRate} / session`}</strong></span>
+                          </>
+                        )}
                       </div>
                     </div>
 
                     <button
                       onClick={() => setActiveMentorToBook(detailedMentor)}
+                      disabled={detailedMentor.isDemo}
+                      title={detailedMentor.isDemo ? 'Sample profiles cannot be booked.' : 'Book an available session'}
                       className="btn btn-primary btn-lg"
                     >
                       <Icon name="calendar" size={18} />
-                      <span>Book Mock Interview</span>
+                      <span>{detailedMentor.isDemo ? 'Sample Only' : 'Book Mock Interview'}</span>
                     </button>
                   </div>
 
@@ -383,8 +452,8 @@ class LRUCache {
                 {filteredMentors.length === 0 && (
                   <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
                     <Icon name="users" size={36} color="var(--text-dim)" />
-                    <h3 style={{ color: '#FFFFFF', marginTop: '1rem' }}>No mentors found</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>Try resetting the company filter or search keyword.</p>
+                    <h3 style={{ color: '#FFFFFF', marginTop: '1rem' }}>No verified experts available</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>Only active experts with verified profiles are listed. Sample profiles cannot be booked.</p>
                   </div>
                 )}
               </div>

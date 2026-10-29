@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../common/Icons';
+import { COMPANIES_DATA } from '../../data/companies';
 
 export const Footer = () => {
   return (
@@ -44,11 +45,11 @@ export const Footer = () => {
               </span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-              Consolidated university campus placement intelligence & technical interview roadmap platform. Real round breakdowns, predictive company pattern analytics, and verified peer mock interviews.
+              Interview preparation with company topic patterns, adaptive study roadmaps, and simulated peer mock interviews.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem', color: 'var(--status-emerald)' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-emerald)', boxShadow: '0 0 8px var(--status-emerald)' }} />
-              <span className="font-mono">Placement Intelligence Nodes: ONLINE (650+ Companies)</span>
+              <span className="font-mono">Placement Intelligence Nodes: ONLINE ({COMPANIES_DATA.length} Company Profiles)</span>
             </div>
           </div>
 

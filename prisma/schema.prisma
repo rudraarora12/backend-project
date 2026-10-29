@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mongodb"
+  url          = env("MONGODB_URI")
+  relationMode = "prisma"
+}
+
+enum UserRole {
+  STUDENT
+  EXPERT
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ExperienceStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+  REJECTED
+}
+
+enum BookmarkType {
+  COMPANY
+  EXPERIENCE
+  QUESTION
+}
+
+enum MentorStatus {
+  PENDING
+  VERIFIED
+  SUSPENDED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  BOOKING
+  MESSAGE
+  MODERATION
+  SYSTEM
+}
+
+model User {
+  id                 String                   @id @default(auto()) @map("_id") @db.ObjectId
+  name               String
+  email              String                   @unique
+  passwordHash       String
+  college            String?
+  degree             String?
+  branch             String?
+  graduationYear     Int?
+  avatar             String?
+  role               UserRole                 @default(STUDENT)
+  status             AccountStatus            @default(ACTIVE)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  sessions           AuthSession[]
+  experiences        InterviewExperience[]    @relation("ExperienceAuthor")
+  votes              ExperienceVote[]
+  bookmarks          Bookmark[]
+  roadmaps           Roadmap[]
+  mentorProfiles     MentorProfile[]
+  studentBookings    Booking[]                @relation("BookingStudent")
+  sentMessages       Message[]
+  studentConversations Conversation[]         @relation("ConversationStudent")
+  expertConversations Conversation[]          @relation("ConversationExpert")
+  notifications      Notification[]
+  auditEvents        AuditEvent[]             @relation("AuditActor")
+  passwordResets     PasswordReset[]
+
+  @@index([role, status])
+}
+
+model AuthSession {
+  sid       String   @id @map("_id")
+  data      Json
+  expiresAt DateTime
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+model PasswordReset {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Company {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  slug        String           @unique
+  name        String
+  category    String
+  logoUrl     String?
+  overview    String?
+  roles       String[]         @default([])
+  topics      String[]         @default([])
+  pattern     Json?
+  isDemo      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  experiences InterviewExperience[]
+  questions   CompanyQuestion[]
+  bookmarks   Bookmark[]
+  roadmaps    Roadmap[]
+
+  @@index([category, name])
+}
+
+model InterviewExperience {
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  authorId          String?            @db.ObjectId
+  companyId         String?            @db.ObjectId
+  companyName       String
+  role              String
+  year              Int
+  channel           String?
+  location          String?
+  result            String?
+  difficulty        Float?
+  compensation        String?
+  prepAdvice        String
+  candidateExperience String?
+  anonymous         Boolean            @default(false)
+  status            ExperienceStatus   @default(PENDING)
+  verified          Boolean            @default(false)
+  isDemo            Boolean            @default(false)
+  helpfulVotes      Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  author            User?              @relation("ExperienceAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  rounds            InterviewRound[]
+  questions         ExperienceQuestion[]
+  votes             ExperienceVote[]
+  bookmarks         Bookmark[]
+
+  @@index([status, createdAt])
+  @@index([companyId, status])
+  @@index([authorId, createdAt])
+}
+
+model InterviewRound {
+  id           String               @id @default(auto()) @map("_id") @db.ObjectId
+  experienceId String               @db.ObjectId
+  position     Int
+  type         String
+  duration     String?
+  difficulty   String?
+  topics       String[]             @default([])
+  questions    String[]             @default([])
+  experience   InterviewExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([experienceId, position])
+  @@index([experienceId])
+}
+
+model Question {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  title       String               @unique
+  topic       String
+  subTopic    String?
+  difficulty  String
+  description String?
+  canonicalUrl String?
+  reports     Int                  @default(0)
+  isDemo      Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  companies   CompanyQuestion[]
+  experiences ExperienceQuestion[]
+  bookmarks   Bookmark[]
+
+  @@index([topic, difficulty])
+}
+
+model CompanyQuestion {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId  String   @db.ObjectId
+  questionId String   @db.ObjectId
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, questionId])
+  @@index([questionId])
+}
+
+model ExperienceQuestion {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  experienceId String             @db.ObjectId
+  questionId   String             @db.ObjectId
+  experience   InterviewExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  question     Question            @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([experienceId, questionId])
+  @@index([questionId])
+}
+
+model ExperienceVote {
+  id           String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String               @db.ObjectId
+  experienceId String               @db.ObjectId
+  createdAt    DateTime           @default(now())
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experience   InterviewExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, experienceId])
+  @@index([experienceId])
+}
+
+model Bookmark {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String       @db.ObjectId
+  identityKey  String       @unique
+  type         BookmarkType
+  companyId    String?      @db.ObjectId
+  experienceId String?      @db.ObjectId
+  questionId   String?      @db.ObjectId
+  createdAt    DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  experience   InterviewExperience? @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  question     Question?    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+}
+
+model Roadmap {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String      @db.ObjectId
+  companyId      String?     @db.ObjectId
+  targetCompany  String
+  targetRole     String
+  skillLevel     String
+  dailyHours     Int
+  durationDays   Int
+  generationMethod String   @default("RULE_BASED")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company        Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  days           RoadmapDay[]
+
+  @@index([userId, updatedAt])
+}
+
+model RoadmapDay {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  roadmapId  String        @db.ObjectId
+  dayNumber  Int
+  title      String
+  focus      String
+  proTip     String?
+  estimatedMinutes Int
+  roadmap    Roadmap       @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  tasks      RoadmapTask[]
+
+  @@unique([roadmapId, dayNumber])
+  @@index([roadmapId])
+}
+
+model RoadmapTask {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  dayId       String    @db.ObjectId
+  title       String
+  difficulty  String
+  timeMinutes Int
+  resourceUrl String?
+  completed   Boolean   @default(false)
+  day         RoadmapDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@index([dayId, completed])
+}
+
+model MentorProfile {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  ownerKey    String       @unique
+  userId      String?      @db.ObjectId
+  companyName String
+  companySlug String
+  roleTitle   String
+  biography   String
+  topics      String[]     @default([])
+  price       Int?
+  currency    String       @default("INR")
+  status      MentorStatus @default(PENDING)
+  isDemo      Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  availability AvailabilitySlot[]
+  bookings    Booking[]
+  conversations Conversation[]
+  reviews     MentorReview[]
+
+  @@index([userId])
+  @@index([status, companySlug])
+}
+
+model AvailabilitySlot {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  mentorId    String        @db.ObjectId
+  startsAt    DateTime
+  endsAt      DateTime
+  timeZone    String
+  price       Int?
+  currency    String        @default("INR")
+  isAvailable Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@index([mentorId, startsAt, isAvailable])
+}
+
+model Booking {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String          @db.ObjectId
+  mentorId    String          @db.ObjectId
+  slotId      String          @db.ObjectId
+  startsAt    DateTime
+  endsAt      DateTime
+  timeZone    String
+  price       Int?
+  currency    String          @default("INR")
+  notes       String?
+  status      BookingStatus   @default(CONFIRMED)
+  cancelledAt DateTime?
+  cancelReason String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  student     User            @relation("BookingStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  mentor      MentorProfile   @relation(fields: [mentorId], references: [id], onDelete: Restrict)
+  slot        AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  review      MentorReview?
+
+  @@index([studentId, status, startsAt])
+  @@index([mentorId, status, startsAt])
+  @@index([slotId, status])
+}
+
+model MentorReview {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId   String        @unique @db.ObjectId
+  mentorId    String        @db.ObjectId
+  studentId   String        @db.ObjectId
+  rating      Int
+  comment     String?
+  createdAt   DateTime      @default(now())
+  booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId, createdAt])
+}
+
+model Conversation {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  studentId String        @db.ObjectId
+  mentorId  String        @db.ObjectId
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  student   User          @relation("ConversationStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Restrict)
+  expert    User?         @relation("ConversationExpert", fields: [expertUserId], references: [id], onDelete: Restrict)
+  expertUserId String?     @db.ObjectId
+  messages  Message[]
+
+  @@unique([studentId, mentorId])
+  @@index([studentId, updatedAt])
+  @@index([expertUserId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String       @db.ObjectId
+  senderId       String       @db.ObjectId
+  clientId       String
+  content        String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@unique([conversationId, senderId, clientId])
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @db.ObjectId
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditEvent {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId    String?  @db.ObjectId
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+}

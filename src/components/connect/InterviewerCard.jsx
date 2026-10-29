@@ -70,13 +70,19 @@ export const InterviewerCard = ({ mentor, interviewer, onBookClick, onBook }) =>
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Icon name="star" size={14} color="#FFD700" />
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{mentorData.rating.toFixed(2)}</span>
-              <span style={{ color: 'var(--text-dim)' }}>({mentorData.reviewCount} mocks)</span>
+              {mentorData.isDemo ? (
+                <span style={{ color: 'var(--text-dim)' }}>Sample profile · no verified reviews</span>
+              ) : (
+                <>
+                  <Icon name="star" size={14} color="#FFD700" />
+                  <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{mentorData.rating?.toFixed(2) || 'New'}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>({mentorData.reviewCount} reviews)</span>
+                </>
+              )}
             </div>
 
             <div style={{ fontWeight: 700, color: 'var(--status-emerald)', fontFamily: 'var(--font-mono)' }}>
-              ₹{mentorData.hourlyRate} / 45m
+              {mentorData.hourlyRate == null ? 'Rate not set' : `₹${mentorData.hourlyRate} / 45m`}
             </div>
           </div>
 
@@ -137,11 +143,13 @@ export const InterviewerCard = ({ mentor, interviewer, onBookClick, onBook }) =>
 
           <button
             onClick={() => handleBook && handleBook(mentorData)}
+            disabled={mentorData.isDemo}
+            title={mentorData.isDemo ? 'Sample profiles cannot be booked.' : 'Book an available session'}
             className="btn btn-primary btn-sm"
-            style={{ flex: 1.2, justifyContent: 'center' }}
+            style={{ flex: 1.2, justifyContent: 'center', opacity: mentorData.isDemo ? 0.55 : 1, cursor: mentorData.isDemo ? 'not-allowed' : 'pointer' }}
           >
             <Icon name="calendar" size={14} />
-            <span>Book Mock</span>
+            <span>{mentorData.isDemo ? 'Sample Only' : 'Book Mock'}</span>
           </button>
         </div>
       </div>

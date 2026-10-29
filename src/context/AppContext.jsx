@@ -1,27 +1,45 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DEFAULT_USER } from '../data/users';
+import { ApiError, apiRequest } from '../services/apiClient';
+import { bookmarksApi } from '../services/api';
 
 const AppContext = createContext(null);
 
 export const AppProvider = ({ children }) => {
   // User Session
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('ii_user');
-      return stored ? JSON.parse(stored) : DEFAULT_USER;
-    } catch {
-      return DEFAULT_USER;
-    }
-  });
+  const [user, setUser] = useState(DEFAULT_USER);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  // Load bookmarks from backend and merge into user state
+  const loadBookmarksFromApi = useCallback(async () => {
     try {
-      const stored = localStorage.getItem('ii_auth');
-      return stored !== null ? JSON.parse(stored) : true;
+      const { bookmarks } = await bookmarksApi.list();
+      const mapped = { companies: [], experiences: [], questions: [] };
+      const reverseMap = { COMPANY: 'companies', EXPERIENCE: 'experiences', QUESTION: 'questions' };
+      (bookmarks || []).forEach(({ type, referenceId }) => {
+        const key = reverseMap[type];
+        if (key) mapped[key].push(referenceId);
+      });
+      setUser((prev) => ({ ...prev, bookmarks: mapped }));
     } catch {
-      return true;
+      // Ignore — bookmarks will remain as initialized
     }
-  });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('/auth/me').then(({ user: sessionUser }) => {
+      if (!active) return;
+      setUser(sessionUser);
+      setIsAuthenticated(true);
+      // Load bookmarks once session is restored
+      loadBookmarksFromApi();
+    }).catch((error) => {
+      if (!active || error instanceof ApiError && error.status === 401) return;
+      console.error('Unable to restore the server session:', error);
+    });
+    return () => { active = false; };
+  }, [loadBookmarksFromApi]);
 
   // Active target track for dashboard
   const [activeTrack, setActiveTrack] = useState(() => {
@@ -45,24 +63,6 @@ export const AppProvider = ({ children }) => {
     confirmText: 'Confirm',
     cancelText: 'Cancel'
   });
-
-  // Sync user to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('ii_user', JSON.stringify(user));
-    } catch (err) {
-      console.warn('Failed to sync user state:', err);
-    }
-  }, [user]);
-
-  // Sync auth state
-  useEffect(() => {
-    try {
-      localStorage.setItem('ii_auth', JSON.stringify(isAuthenticated));
-    } catch (err) {
-      console.warn('Failed to sync auth state:', err);
-    }
-  }, [isAuthenticated]);
 
   // Sync active track
   useEffect(() => {
@@ -108,46 +108,74 @@ export const AppProvider = ({ children }) => {
 
   // Auth Handlers
   const login = useCallback((userData) => {
-    const mergedUser = { ...user, ...userData };
-    setUser(mergedUser);
+    setUser(userData);
     setIsAuthenticated(true);
-    showToast(`Welcome back, ${mergedUser.name}!`, 'success');
-  }, [user, showToast]);
+    showToast(`Welcome back, ${userData.name}!`, 'success');
+    // Load bookmarks from backend after login
+    loadBookmarksFromApi();
+  }, [showToast, loadBookmarksFromApi]);
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-    showToast('Logged out of interview workspace.', 'info');
+  const logout = useCallback(async () => {
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+      setIsAuthenticated(false);
+      setUser(DEFAULT_USER);
+      showToast('Logged out of interview workspace.', 'info');
+    } catch (error) {
+      showToast(error.message || 'Unable to log out. Please try again.', 'error');
+    }
   }, [showToast]);
 
   const updateUser = useCallback((updates) => {
     setUser((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  // Bookmark Toggle
-  const toggleBookmark = useCallback((type, id) => {
-    setUser((prev) => {
-      const currentList = prev.bookmarks?.[type] || [];
-      const isAlready = currentList.includes(id);
-      const updatedList = isAlready
-        ? currentList.filter((item) => item !== id)
-        : [...currentList, id];
+  // Bookmark Toggle — persists to backend when authenticated
+  const toggleBookmark = useCallback(async (type, id) => {
+    const typeMap = { companies: 'COMPANY', experiences: 'EXPERIENCE', questions: 'QUESTION' };
+    const apiType = typeMap[type] || type.toUpperCase();
+    const currentList = user.bookmarks?.[type] || [];
+    const isAlready = currentList.includes(id);
 
-      const newBookmarks = {
+    // Optimistic update
+    setUser((prev) => ({
+      ...prev,
+      bookmarks: {
         ...prev.bookmarks,
-        [type]: updatedList
-      };
+        [type]: isAlready ? currentList.filter((i) => i !== id) : [...currentList, id]
+      }
+    }));
 
+    if (isAuthenticated) {
+      try {
+        if (isAlready) {
+          await bookmarksApi.remove(apiType, id);
+        } else {
+          await bookmarksApi.add(apiType, id);
+        }
+        showToast(
+          isAlready ? `Removed from ${type} bookmarks` : `Saved to ${type} bookmarks`,
+          'success'
+        );
+      } catch (err) {
+        // Revert optimistic update on failure
+        setUser((prev) => ({
+          ...prev,
+          bookmarks: { ...prev.bookmarks, [type]: currentList }
+        }));
+        showToast('Could not save bookmark. Try again.', 'error');
+        return;
+      }
+    } else {
+      // Not authenticated — still give local feedback but note it won't persist
       showToast(
-        isAlready ? `Removed from ${type} bookmarks` : `Saved to ${type} bookmarks`,
-        'success'
+        isAlready
+          ? `Removed from ${type} bookmarks`
+          : `Sign in to save bookmarks permanently`,
+        isAlready ? 'success' : 'warning'
       );
-
-      return {
-        ...prev,
-        bookmarks: newBookmarks
-      };
-    });
-  }, [showToast]);
+    }
+  }, [user.bookmarks, isAuthenticated, showToast]);
 
   const isBookmarked = useCallback((type, id) => {
     return Boolean(user.bookmarks?.[type]?.includes(id));
@@ -168,7 +196,8 @@ export const AppProvider = ({ children }) => {
     openModal,
     closeModal,
     toggleBookmark,
-    isBookmarked
+    isBookmarked,
+    loadBookmarksFromApi
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

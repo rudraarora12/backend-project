@@ -1,34 +1,38 @@
 import React from 'react';
 import { Icon } from '../common/Icons';
+import { COMPANIES_DATA } from '../../data/companies';
+import { EXPERIENCES_DATA } from '../../data/experiences';
+import { QUESTIONS_DATA } from '../../data/questions';
+import { INTERVIEWERS_DATA } from '../../data/interviewers';
 
 export const StatsSection = () => {
   const stats = [
     {
-      label: 'Verified Interview Records',
-      value: '2,840+',
-      trend: '+12% this month',
+      label: 'Company Profiles',
+      value: COMPANIES_DATA.length,
+      trend: 'Curated interview patterns',
       icon: 'shield',
       accent: 'var(--accent-cyan)'
     },
     {
-      label: 'Tech Companies Indexed',
-      value: '650+',
-      trend: 'FAANG, Tier 1, Fintech',
+      label: 'Sample Interview Reports',
+      value: EXPERIENCES_DATA.length,
+      trend: 'Example placement stories',
       icon: 'building',
       accent: 'var(--accent-purple)'
     },
     {
-      label: 'Campus Offer Rate',
-      value: '84.6%',
-      trend: 'Among active sprint students',
-      icon: 'flame',
+      label: 'Practice Questions',
+      value: QUESTIONS_DATA.length,
+      trend: 'Across technical topics',
+      icon: 'book',
       accent: 'var(--status-emerald)'
     },
     {
-      label: 'Highest Reported CTC',
-      value: '₹58 LPA',
-      trend: 'SDE / Quantitative MTS',
-      icon: 'dollar',
+      label: 'Mentor Profiles',
+      value: INTERVIEWERS_DATA.length,
+      trend: 'Demo mentor directory',
+      icon: 'user',
       accent: 'var(--status-amber)'
     }
   ];

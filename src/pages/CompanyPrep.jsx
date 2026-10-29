@@ -1,7 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { COMPANIES_DATA } from '../data/companies';
-import { getAllExperiences, getExperienceById, getCanonicalQuestionUrl, createExperience } from '../services/experienceService';
+import {
+  getAllExperiences,
+  getAllExperiencesAsync,
+  getExperienceById,
+  getCanonicalQuestionUrl
+} from '../services/experienceService';
+import { apiRequest } from '../services/apiClient';
 import { QUESTIONS_DATA } from '../data/questions';
 import { useApp } from '../context/AppContext';
 import { Icon } from '../components/common/Icons';
@@ -76,8 +82,8 @@ export const CompanyPrep = () => {
       const term = companySearch.toLowerCase();
       const matchesSearch =
         comp.name.toLowerCase().includes(term) ||
-        comp.roles.some((r) => r.toLowerCase().includes(term)) ||
-        comp.techStack.some((t) => t.toLowerCase().includes(term));
+        (comp.popularRoles || []).some((r) => r.toLowerCase().includes(term)) ||
+        (comp.topTopics || []).some((t) => t.toLowerCase().includes(term));
       const matchesDiff =
         companyDifficultyFilter === 'All' ||
         (companyDifficultyFilter === 'Hard' && comp.avgDifficulty >= 4.0) ||
@@ -104,8 +110,25 @@ export const CompanyPrep = () => {
   // ==========================================
   // TAB 3: EXPERIENCES FEED & DETAIL
   // ==========================================
-  const allExperiences = getAllExperiences();
-  // Filter for approved public experiences (or experiences submitted by current session)
+  // Load experiences from backend; fall back to static seed data on error
+  const [allExperiences, setAllExperiences] = useState(() => getAllExperiences());
+  const [expLoading, setExpLoading] = useState(false);
+
+  // Helper to refresh experience list from API
+  const refreshExperiences = () => {
+    setExpLoading(true);
+    getAllExperiencesAsync()
+      .then((exps) => {
+        if (exps && exps.length > 0) setAllExperiences(exps);
+      })
+      .catch(() => { /* keep existing data on error */ })
+      .finally(() => setExpLoading(false));
+  };
+
+  useEffect(() => {
+    refreshExperiences();
+  }, []);
+  // Bundled reports are illustrative; only server-approved records are verified.
   const approvedExperiences = useMemo(() => {
     return allExperiences.filter((e) => e.status !== 'flagged');
   }, [allExperiences]);
@@ -138,8 +161,12 @@ export const CompanyPrep = () => {
 
   const selectedExperience = useMemo(() => {
     if (!experienceIdParam) return null;
+    // First try the already-loaded list (avoids extra API call for most cases)
+    const fromList = allExperiences.find((e) => String(e.id) === String(experienceIdParam));
+    if (fromList) return fromList;
+    // Fall back to sync legacy lookup (static seed data)
     return getExperienceById(experienceIdParam);
-  }, [experienceIdParam]);
+  }, [experienceIdParam, allExperiences]);
 
   // Company experiences specifically
   const companyExperiences = useMemo(() => {
@@ -224,15 +251,24 @@ export const CompanyPrep = () => {
     setIsSubmitting(true);
 
     try {
-      const created = createExperience(submitFormData);
-      showToast('Interview report submitted! Sent to moderation desk for placement verification.', 'success', 5000);
-      setIsSubmitting(false);
+      await apiRequest('/experiences', {
+        method: 'POST',
+        body: {
+          ...submitFormData,
+          companySlug: COMPANIES_DATA.find((company) => company.name === submitFormData.company)?.slug,
+          compensation: submitFormData.ctc,
+          rounds: submitFormData.rounds
+        }
+      });
+      showToast('Interview report submitted for moderation. It will appear publicly after review.', 'success', 5000);
       // Reset form and return to experiences tab
       setSubmitStep(1);
       handleTabChange('experiences');
+      // Refresh experience list from backend
+      refreshExperiences();
     } catch (err) {
-      console.error(err);
-      showToast('Failed to submit experience. Please retry.', 'error');
+      showToast(err.message || 'Failed to submit experience. Please retry.', 'error');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -250,7 +286,7 @@ export const CompanyPrep = () => {
             Company Recruitment & Interview Intelligence
           </h1>
           <p className="page-subtitle">
-            Explore 650+ tech companies, predictive hiring topic patterns, verified student interview debriefs, and community-reported question banks.
+            Explore {COMPANIES_DATA.length} curated company profiles, hiring topic patterns, sample student interview reports, and community-reported questions.
           </p>
         </div>
 
@@ -497,7 +533,7 @@ export const CompanyPrep = () => {
               >
                 <Icon name="shield" size={16} color="var(--accent-cyan)" />
                 <span>
-                  <strong>Predictive Intelligence Notice:</strong> Historical topic patterns and round structures are estimates derived from crowdsourced placement logs across verified students, not guaranteed future interview questions.
+                  <strong>Sample data notice:</strong> Topic patterns and round structures are illustrative examples, not verified company hiring data or guaranteed interview questions.
                 </span>
               </div>
             </div>
@@ -514,13 +550,13 @@ export const CompanyPrep = () => {
                 className={`tab-btn ${intelligenceSubTab === 'questions' ? 'active' : ''}`}
                 onClick={() => setIntelligenceSubTab('questions')}
               >
-                Frequently Asked ({activeCompany.frequentlyAskedQuestions?.length || 0})
+                Frequently Asked ({activeCompany.freqQuestions?.length || 0})
               </button>
               <button
                 className={`tab-btn ${intelligenceSubTab === 'experiences' ? 'active' : ''}`}
                 onClick={() => setIntelligenceSubTab('experiences')}
               >
-                Verified Student Reports ({companyExperiences.length})
+                Sample & Approved Reports ({companyExperiences.length})
               </button>
             </div>
 
@@ -542,7 +578,7 @@ export const CompanyPrep = () => {
                   </h3>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {activeCompany.rounds?.map((r, i) => (
+                    {(activeCompany.pattern || []).map((r, i) => (
                       <div
                         key={i}
                         style={{
@@ -554,26 +590,26 @@ export const CompanyPrep = () => {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                           <span style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.95rem' }}>
-                            Round {r.round}: {r.name}
+                            {r.label}
                           </span>
                           <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
-                            {r.duration}
+                            {r.percentage}%
                           </span>
                         </div>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-                          {r.focus}
-                        </p>
+                        <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.07)', marginTop: '0.4rem' }}>
+                          <div style={{ height: '100%', borderRadius: '2px', width: `${r.percentage}%`, background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))' }} />
+                        </div>
                       </div>
                     ))}
                   </div>
 
-                  {activeCompany.cultureNotes && (
+                  {activeCompany.overview && (
                     <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(108, 99, 255, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(108, 99, 255, 0.25)' }}>
                       <div style={{ fontWeight: 700, color: '#A78BFA', fontSize: '0.85rem', marginBottom: '0.3rem' }}>
                         Preparation Strategy & Culture Note
                       </div>
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: 0, lineHeight: 1.5 }}>
-                        {activeCompany.cultureNotes}
+                        {activeCompany.overview}
                       </p>
                     </div>
                   )}
@@ -588,7 +624,7 @@ export const CompanyPrep = () => {
                   Frequently Asked Problems at {activeCompany.name}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                  {activeCompany.frequentlyAskedQuestions?.map((q, idx) => (
+                  {(activeCompany.freqQuestions || []).map((q, idx) => (
                     <div
                       key={idx}
                       style={{
@@ -608,19 +644,11 @@ export const CompanyPrep = () => {
                           {q.title}
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                          <span>Topic: <strong style={{ color: 'var(--text-muted)' }}>{q.topic}</strong></span>
-                          <span>•</span>
-                          <span>Reports: <strong style={{ color: 'var(--accent-cyan)' }}>{q.frequency} students</strong></span>
+                          <span>Reports: <strong style={{ color: 'var(--accent-cyan)' }}>{q.reports} students</strong></span>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Badge
-                          variant={q.difficulty === 'Hard' ? 'hard' : q.difficulty === 'Medium' ? 'medium' : 'easy'}
-                          size="sm"
-                        >
-                          {q.difficulty}
-                        </Badge>
                         <a
                           href={getCanonicalQuestionUrl(q.title)}
                           target="_blank"
@@ -670,7 +698,7 @@ export const CompanyPrep = () => {
 
                   {companyExperiences.length === 0 && (
                     <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-                      <p style={{ color: 'var(--text-muted)' }}>No verified student reports yet for {activeCompany.name}.</p>
+                      <p style={{ color: 'var(--text-muted)' }}>No approved reports are available yet for {activeCompany.name}.</p>
                       <button
                         onClick={() => {
                           handleSubmitChange('company', activeCompany.name);
@@ -726,7 +754,9 @@ export const CompanyPrep = () => {
                         <span style={{ fontSize: '2rem', fontWeight: 800, color: '#FFFFFF' }}>
                           {selectedExperience.company}
                         </span>
-                        {selectedExperience.verified && (
+                        {selectedExperience.isDemo ? (
+                          <Badge variant="purple" size="sm">Sample report</Badge>
+                        ) : selectedExperience.verified && (
                           <span className="badge badge-cyan" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <Icon name="shield" size={13} />
                             <span>VERIFIED RECORD</span>
@@ -843,6 +873,11 @@ export const CompanyPrep = () => {
 
                 {/* Experiences List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {expLoading && (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)' }}>
+                      Loading interview reports…
+                    </div>
+                  )}
                   {filteredExperiences.map((exp) => (
                     <div
                       key={exp.id}

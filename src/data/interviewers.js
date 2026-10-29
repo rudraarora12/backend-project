@@ -1,4 +1,4 @@
-export const INTERVIEWERS_DATA = [
+const bundledInterviewers = [
   {
     id: "cand-101",
     name: "Arjun Mehta",
@@ -96,3 +96,13 @@ export const INTERVIEWERS_DATA = [
     availableSlots: ["Friday, 8:00 PM IST", "Saturday, 6:00 PM IST", "Sunday, 11:00 AM IST"]
   }
 ];
+
+export const INTERVIEWERS_DATA = bundledInterviewers.map((mentor) => ({
+  ...mentor,
+  isDemo: true,
+  rating: null,
+  reviewCount: 0,
+  hourlyRate: null,
+  interviewResult: 'Unverified sample',
+  availableSlots: []
+}));

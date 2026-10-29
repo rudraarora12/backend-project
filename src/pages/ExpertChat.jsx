@@ -1,436 +1,541 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getAllMentors } from '../services/connectService';
 import { useApp } from '../context/AppContext';
 import { Icon } from '../components/common/Icons';
-import { Badge } from '../components/common/Badge';
-import { ScrollReveal } from '../components/common/ScrollReveal';
 import '../styles/expert-chat.css';
+
+const STORAGE_KEY = 'ii_expert_conversations_v1';
+const mentors = getAllMentors();
+
+function createMessageId() {
+  return globalThis.crypto?.randomUUID?.() || `message-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isValidMessage(message) {
+  return (
+    message &&
+    typeof message.id === 'string' &&
+    typeof message.text === 'string' &&
+    message.text.trim() &&
+    (message.sender === 'student' || message.sender === 'expert')
+  );
+}
+
+function uniqueMessages(messages) {
+  const ids = new Set();
+  return messages.filter((message) => {
+    if (!isValidMessage(message) || ids.has(message.id)) return false;
+    ids.add(message.id);
+    return true;
+  });
+}
+
+function readConversationState(userName) {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.version !== 1 || !parsed.conversations || typeof parsed.conversations !== 'object') {
+        throw new Error('Stored conversation data has an unsupported format.');
+      }
+
+      const conversations = {};
+      for (const expert of mentors) {
+        const saved = parsed.conversations[expert.id];
+        if (!saved || !Array.isArray(saved.messages)) continue;
+        conversations[expert.id] = {
+          updatedAt: typeof saved.updatedAt === 'string' ? saved.updatedAt : '',
+          messages: uniqueMessages(saved.messages).map((message) => ({
+            id: message.id,
+            sender: message.sender,
+            text: message.text,
+            createdAt: typeof message.createdAt === 'string' ? message.createdAt : '',
+            timestamp: typeof message.timestamp === 'string' ? message.timestamp : ''
+          }))
+        };
+      }
+      return { conversations, error: '', readOnly: false };
+    }
+
+    const conversations = {};
+    for (const expert of mentors) {
+      const legacyKey = `ii_chat_${userName}_${expert.id}`;
+      const legacyData = localStorage.getItem(legacyKey);
+      if (!legacyData) continue;
+
+      try {
+        const legacyMessages = JSON.parse(legacyData);
+        if (!Array.isArray(legacyMessages)) continue;
+
+        // Earlier versions generated fake expert replies; retain only messages the student wrote.
+        const messages = legacyMessages
+          .filter((message) => message?.sender === 'student' && typeof message.text === 'string' && message.text.trim())
+          .map((message, index) => ({
+            id: typeof message.id === 'string' ? message.id : `legacy-${expert.id}-${index}`,
+            sender: 'student',
+            text: message.text,
+            createdAt: '',
+            timestamp: typeof message.timestamp === 'string' ? message.timestamp : ''
+          }));
+
+        if (messages.length) conversations[expert.id] = { updatedAt: '', messages };
+      } catch (error) {
+        console.warn(`Could not migrate conversation history for ${expert.id}:`, error);
+      }
+    }
+
+    if (Object.keys(conversations).length) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, conversations }));
+        return { conversations, error: '', readOnly: false };
+      } catch (error) {
+        console.warn('Could not save migrated conversation history:', error);
+        return {
+          conversations,
+          error: 'Your previous messages were loaded, but this browser could not save the updated conversation format.',
+          readOnly: false
+        };
+      }
+    }
+
+    return { conversations, error: '', readOnly: false };
+  } catch (error) {
+    console.warn('Could not load local expert conversations:', error);
+    return {
+      conversations: {},
+      error: 'Saved conversations could not be read. Sending is disabled to protect the existing data.',
+      readOnly: true
+    };
+  }
+}
+
+function Avatar({ expert, size = 'regular' }) {
+  return (
+    <span className={`chat-avatar chat-avatar-${size}`} aria-hidden="true">
+      <span>{expert.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
+      <img
+        src={expert.avatar}
+        alt=""
+        onError={(event) => {
+          event.currentTarget.style.display = 'none';
+        }}
+      />
+    </span>
+  );
+}
+
+function formatTime(message) {
+  if (message.createdAt) {
+    const date = new Date(message.createdAt);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+  }
+  return message.timestamp || '';
+}
+
+function formatDay(message) {
+  if (!message.createdAt) return '';
+  const date = new Date(message.createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function formatConversationTime(conversation) {
+  if (conversation.updatedAt) {
+    const date = new Date(conversation.updatedAt);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  }
+  const latest = conversation.messages[conversation.messages.length - 1];
+  return latest ? formatTime(latest) : '';
+}
 
 export const ExpertChat = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, showToast } = useApp();
-  const mentors = getAllMentors();
+  const selectedExpertId = searchParams.get('expert');
+  const selectedExpert = mentors.find((expert) => expert.id === selectedExpertId) || null;
+  const [search, setSearch] = useState('');
+  const [showDirectory, setShowDirectory] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [sendError, setSendError] = useState('');
+  const [conversationState, setConversationState] = useState(() => readConversationState(user?.name || 'guest'));
+  const messagesViewportRef = useRef(null);
+  const activeConversation = selectedExpert ? conversationState.conversations[selectedExpert.id] : null;
+  const messages = activeConversation?.messages || [];
 
-  const mentorQueryParam = searchParams.get('expert');
+  const existingConversations = useMemo(() => {
+    return mentors
+      .filter((expert) => (conversationState.conversations[expert.id]?.messages.length || 0) > 0)
+      .sort((a, b) => {
+        const aDate = conversationState.conversations[a.id]?.updatedAt || '';
+        const bDate = conversationState.conversations[b.id]?.updatedAt || '';
+        return bDate.localeCompare(aDate);
+      });
+  }, [conversationState.conversations]);
 
-  // Selected Expert
-  const [selectedExpert, setSelectedExpert] = useState(() => {
-    if (mentorQueryParam) {
-      const match = mentors.find((m) => m.id === mentorQueryParam);
-      if (match) return match;
-    }
-    return mentors[0] || null;
-  });
-
-  const [expertSearch, setExpertSearch] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('All');
-  const [inputMessage, setInputMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  const companies = ['All', 'Amazon', 'Google', 'Microsoft', 'Goldman Sachs', 'Uber'];
-
-  // Storage key per expert & user
-  const chatStorageKey = `ii_chat_${user?.name || 'guest'}_${selectedExpert?.id || 'default'}`;
-
-  // Initial welcome message for each mentor based on their domain
-  const getDefaultMessages = (mentor) => {
-    if (!mentor) return [];
-    return [
-      {
-        id: 'msg-init-1',
-        sender: 'expert',
-        text: `Hey there! I'm ${mentor.name}, placed at ${mentor.company} as a ${mentor.role}. Feel free to ask me anything about our campus OA rounds, technical interview bar, or preparation strategy!`,
-        timestamp: '10:00 AM'
-      },
-      {
-        id: 'msg-init-2',
-        sender: 'expert',
-        text: `Top topics I focus on: ${mentor.topics.join(', ')}. What company are you actively preparing for?`,
-        timestamp: '10:01 AM'
-      }
-    ];
-  };
-
-  // Load messages from localStorage or initialize
-  const [messages, setMessages] = useState(() => {
-    try {
-      const stored = localStorage.getItem(chatStorageKey);
-      if (stored) return JSON.parse(stored);
-      return getDefaultMessages(selectedExpert);
-    } catch {
-      return getDefaultMessages(selectedExpert);
-    }
-  });
-
-  // When switching selected expert, reload conversation
-  useEffect(() => {
-    if (!selectedExpert) return;
-    try {
-      const stored = localStorage.getItem(chatStorageKey);
-      if (stored) {
-        setMessages(JSON.parse(stored));
-      } else {
-        const initial = getDefaultMessages(selectedExpert);
-        setMessages(initial);
-        localStorage.setItem(chatStorageKey, JSON.stringify(initial));
-      }
-    } catch {
-      setMessages(getDefaultMessages(selectedExpert));
-    }
-  }, [selectedExpert?.id, chatStorageKey]);
-
-  // Auto-scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const visibleExperts = useMemo(() => {
+    const source = showDirectory ? mentors : existingConversations;
+    const query = search.trim().toLowerCase();
+    return source.filter((expert) => (
+      !query ||
+      expert.name.toLowerCase().includes(query) ||
+      expert.company.toLowerCase().includes(query) ||
+      expert.role.toLowerCase().includes(query) ||
+      expert.topics.some((topic) => topic.toLowerCase().includes(query)) ||
+      (!showDirectory && (conversationState.conversations[expert.id]?.messages || [])
+        .some((message) => message.text.toLowerCase().includes(query)))
+    ));
+  }, [conversationState.conversations, existingConversations, search, showDirectory]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const viewport = messagesViewportRef.current;
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+  }, [selectedExpertId, messages.length]);
 
-  // Filtered experts in sidebar
-  const filteredExperts = useMemo(() => {
-    return mentors.filter((m) => {
-      const matchesCompany = companyFilter === 'All' || m.company.toLowerCase() === companyFilter.toLowerCase();
-      const term = expertSearch.toLowerCase();
-      const matchesSearch =
-        m.name.toLowerCase().includes(term) ||
-        m.company.toLowerCase().includes(term) ||
-        m.role.toLowerCase().includes(term) ||
-        m.topics.some((t) => t.toLowerCase().includes(term));
-
-      return matchesCompany && matchesSearch;
-    });
-  }, [mentors, companyFilter, expertSearch]);
-
-  const handleSelectExpert = (exp) => {
-    setSelectedExpert(exp);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('expert', exp.id);
-    setSearchParams(newParams);
+  const selectExpert = (expertId) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('expert', expertId);
+    setSearchParams(nextParams);
+    setShowDirectory(false);
+    setSearch('');
+    setSendError('');
   };
 
-  const handleSendMessage = (e) => {
-    if (e) e.preventDefault();
-    const trimmed = inputMessage.trim();
-    if (!trimmed) return;
-
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const userMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'student',
-      text: trimmed,
-      timestamp: timeString
-    };
-
-    const updated = [...messages, userMessage];
-    setMessages(updated);
-    setInputMessage('');
-    localStorage.setItem(chatStorageKey, JSON.stringify(updated));
-
-    // Simulated helpful contextual response from mentor (demo mode)
-    setIsSending(true);
-    setTimeout(() => {
-      let replyText = `Thanks for asking! For ${selectedExpert.company}, the key is to clearly communicate your thought process and edge cases before coding. Review our frequent patterns under Company Prep!`;
-
-      if (trimmed.toLowerCase().includes('amazon') || trimmed.toLowerCase().includes('lp') || trimmed.toLowerCase().includes('leadership')) {
-        replyText = `For Amazon, remember that 50% of the interview score is Leadership Principles. Structure every story using STAR: Situation, Task, Action, Result. Quantify your achievements!`;
-      } else if (trimmed.toLowerCase().includes('google') || trimmed.toLowerCase().includes('dsa') || trimmed.toLowerCase().includes('graph')) {
-        replyText = `At Google, interviewers test code correctness and proof of optimal complexity. Always verify your solution with a sample input trace before saying you're done!`;
-      } else if (trimmed.toLowerCase().includes('resume') || trimmed.toLowerCase().includes('project')) {
-        replyText = `Keep your resume to 1 page. Lead bullet points with strong action verbs (Architected, Engineered, Optimized) and include real metrics like 'Reduced latency by 35%'.`;
-      }
-
-      const mentorReply = {
-        id: `msg-${Date.now() + 1}`,
-        sender: 'expert',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      const finalMessages = [...updated, mentorReply];
-      setMessages(finalMessages);
-      localStorage.setItem(chatStorageKey, JSON.stringify(finalMessages));
-      setIsSending(false);
-    }, 1200);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+  const returnToConversations = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('expert');
+    setSearchParams(nextParams);
   };
 
   const handleClearHistory = () => {
-    if (window.confirm(`Clear chat conversation with ${selectedExpert?.name}?`)) {
-      const reset = getDefaultMessages(selectedExpert);
-      setMessages(reset);
-      localStorage.setItem(chatStorageKey, JSON.stringify(reset));
-      showToast('Conversation reset to initial state.', 'info');
+    if (!selectedExpert || !messages.length) return;
+    if (!window.confirm(`Clear the locally stored conversation with ${selectedExpert.name}?`)) return;
+
+    const nextConversations = { ...conversationState.conversations };
+    delete nextConversations[selectedExpert.id];
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, conversations: nextConversations }));
+      setConversationState({ conversations: nextConversations, error: '', readOnly: false });
+      setSendError('');
+      showToast('Local conversation cleared.', 'info');
+    } catch (error) {
+      console.error('Could not clear expert chat history:', error);
+      setSendError('Conversation history could not be cleared from this browser.');
+    }
+  };
+
+  const handleSendMessage = (event) => {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text || !selectedExpert || conversationState.readOnly) return;
+
+    const createdAt = new Date().toISOString();
+    const message = {
+      id: createMessageId(),
+      sender: 'student',
+      text,
+      createdAt,
+      timestamp: ''
+    };
+    const nextConversations = {
+      ...conversationState.conversations,
+      [selectedExpert.id]: {
+        updatedAt: createdAt,
+        messages: [...messages, message]
+      }
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, conversations: nextConversations }));
+      setConversationState({ conversations: nextConversations, error: '', readOnly: false });
+      setDraft('');
+      setSendError('');
+      if (!selectedExpertId) selectExpert(selectedExpert.id);
+    } catch (error) {
+      console.error('Could not save expert chat message:', error);
+      setSendError('Your message was not saved. Check this browser’s available storage, then try again.');
+    }
+  };
+
+  const handleComposerKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (draft.trim() && !conversationState.readOnly) handleSendMessage(event);
     }
   };
 
   return (
-    <div className="expert-chat-page">
-      <div className="container">
-        {/* Page Header */}
-        <div className="page-header" style={{ marginBottom: '1.75rem' }}>
-          <div className="section-tag">
-            <span className="section-tag-dot" />
-            <span>Direct Text Advisory</span>
+    <section className="expert-chat-page">
+      <div className="expert-chat-shell">
+        <header className="expert-chat-page-header">
+          <div className="expert-chat-heading">
+            <nav className="chat-breadcrumb" aria-label="Breadcrumb">
+              <Link to="/">Home</Link>
+              <span aria-hidden="true">/</span>
+              <span aria-current="page">Expert Chat</span>
+            </nav>
+            <h1>Expert Chat</h1>
+            <p>Get career advice from experienced professionals.</p>
           </div>
-          <h1 className="page-title">
-            1-on-1 Expert Advisory Chat
-          </h1>
-          <p className="page-subtitle">
-            Connect directly with verified campus placed seniors and alumni to ask rapid questions regarding online assessments, resume reviews, and company-specific interview standards.
-          </p>
-        </div>
-
-        {/* Local Demo Disclaimer */}
-        <div
-          style={{
-            padding: '0.75rem 1.25rem',
-            background: 'rgba(0, 212, 255, 0.06)',
-            border: '1px solid rgba(0, 212, 255, 0.25)',
-            borderRadius: 'var(--radius-lg)',
-            marginBottom: '1.75rem',
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-            fontSize: '0.85rem'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
-            <Icon name="shield" size={16} color="var(--accent-cyan)" />
-            <span>
-              <strong>Local Conversation Mode (Offline Storage):</strong> Conversations are saved locally to your device workspace.
-            </span>
+          <div className="chat-mode-indicator">
+            <span className="chat-mode-dot" />
+            <span>Demo mode · Stored locally on this device</span>
           </div>
-          <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
-            CLIENT-PERSISTENT
-          </span>
-        </div>
+        </header>
 
-        {/* Chat Application Card */}
-        <ScrollReveal direction="up">
-          <div className="chat-container-card">
-            {/* Left Sidebar: Expert Discovery */}
-            <div className="chat-sidebar">
-              <div className="chat-sidebar-header">
-                <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
-                  <div style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }}>
-                    <Icon name="search" size={15} />
-                  </div>
-                  <input
-                    type="text"
-                    className="search-input"
-                    style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem' }}
-                    placeholder="Search mentor or company..."
-                    value={expertSearch}
-                    onChange={(e) => setExpertSearch(e.target.value)}
-                  />
+        <div className={`chat-container-card${selectedExpertId ? ' has-active-conversation' : ''}`}>
+          <aside className="chat-sidebar" aria-label="Conversations and experts">
+            <div className="chat-sidebar-header">
+              <div className="chat-sidebar-title-row">
+                <div>
+                  <h2>{showDirectory ? 'Find an expert' : 'Messages'}</h2>
+                  <p>{showDirectory ? 'Choose someone to start a conversation' : `${existingConversations.length} saved conversation${existingConversations.length === 1 ? '' : 's'}`}</p>
                 </div>
-
-                {/* Company Filter Pills */}
-                <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                  {companies.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setCompanyFilter(c)}
-                      style={{
-                        padding: '0.25rem 0.6rem',
-                        fontSize: '0.72rem',
-                        borderRadius: 'var(--radius-full)',
-                        border: '1px solid',
-                        borderColor: companyFilter === c ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-                        background: companyFilter === c ? 'rgba(0, 212, 255, 0.15)' : 'transparent',
-                        color: companyFilter === c ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className={`chat-directory-toggle${showDirectory ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setShowDirectory((visible) => !visible);
+                    setSearch('');
+                  }}
+                  aria-label={showDirectory ? 'Show saved conversations' : 'Find an expert'}
+                  title={showDirectory ? 'Show saved conversations' : 'Find an expert'}
+                >
+                  <Icon name={showDirectory ? 'message-square' : 'plus'} size={18} />
+                </button>
               </div>
-
-              {/* Expert List */}
-              <div className="chat-expert-list">
-                {filteredExperts.map((expert) => {
-                  const isSelected = selectedExpert?.id === expert.id;
-                  return (
-                    <button
-                      key={expert.id}
-                      onClick={() => handleSelectExpert(expert)}
-                      className={`chat-expert-item ${isSelected ? 'active' : ''}`}
-                    >
-                      <div style={{ position: 'relative' }}>
-                        <img
-                          src={expert.avatar}
-                          alt={expert.name}
-                          style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
-                        />
-                        <span
-                          style={{
-                            position: 'absolute',
-                            bottom: '1px',
-                            right: '1px',
-                            width: '10px',
-                            height: '10px',
-                            borderRadius: '50%',
-                            background: 'var(--status-emerald)',
-                            border: '2px solid #050811'
-                          }}
-                        />
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {expert.name}
-                          </span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-                            {expert.company}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {expert.role}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {filteredExperts.length === 0 && (
-                  <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-                    No experts found matching query.
-                  </div>
-                )}
-              </div>
+              <label className="chat-search">
+                <Icon name="search" size={16} />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={showDirectory ? 'Search experts' : 'Search messages'}
+                  aria-label={showDirectory ? 'Search experts' : 'Search conversations'}
+                />
+              </label>
+              <button
+                type="button"
+                className="chat-find-expert-button"
+                onClick={() => {
+                  setShowDirectory(true);
+                  setSearch('');
+                }}
+              >
+                <Icon name="plus" size={15} />
+                <span>Find an expert</span>
+              </button>
             </div>
 
-            {/* Right: Active Chat View */}
-            {selectedExpert ? (
-              <div className="chat-main-area">
-                {/* Header */}
-                <div className="chat-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <div style={{ position: 'relative' }}>
-                      <img
-                        src={selectedExpert.avatar}
-                        alt={selectedExpert.name}
-                        style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }}
-                      />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: '0',
-                          right: '0',
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          background: 'var(--status-emerald)',
-                          border: '2px solid #050811'
-                        }}
-                      />
-                    </div>
+            <div className="chat-expert-list">
+              {visibleExperts.map((expert) => {
+                const conversation = conversationState.conversations[expert.id];
+                const lastMessage = conversation?.messages[conversation.messages.length - 1];
+                const isSelected = selectedExpertId === expert.id;
+                return (
+                  <button
+                    key={expert.id}
+                    type="button"
+                    className={`chat-expert-item${isSelected ? ' active' : ''}`}
+                    onClick={() => selectExpert(expert.id)}
+                    aria-current={isSelected ? 'true' : undefined}
+                  >
+                    <Avatar expert={expert} />
+                    <span className="chat-expert-copy">
+                      <span className="chat-expert-primary">
+                        <span className="chat-expert-name">{expert.name}</span>
+                        <span className="chat-expert-time">
+                          {lastMessage ? formatConversationTime(conversation) : ''}
+                        </span>
+                      </span>
+                      <span className="chat-expert-company">{expert.company} · {expert.role}</span>
+                      <span className="chat-expert-preview">
+                        {lastMessage
+                          ? `${lastMessage.sender === 'student' ? 'You: ' : ''}${lastMessage.text}`
+                          : 'Start a conversation'}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
 
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
-                          {selectedExpert.name}
-                        </h3>
-                        <Badge variant="cyan" size="sm">
-                          {selectedExpert.company}
-                        </Badge>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {selectedExpert.role} • Placed {selectedExpert.interviewYear}
-                      </div>
+              {visibleExperts.length === 0 && (
+                <div className="chat-list-empty">
+                  <Icon name={search ? 'search' : 'message-square'} size={22} />
+                  <p>
+                    {search
+                      ? 'No results. Try another name, company, or topic.'
+                      : showDirectory
+                        ? 'No experts are available right now.'
+                        : 'No conversations yet. Find an expert to get started.'}
+                  </p>
+                  {!search && !showDirectory && (
+                    <button
+                      type="button"
+                      className="chat-text-action"
+                      onClick={() => setShowDirectory(true)}
+                    >
+                      Browse experts
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+
+          <section className="chat-main-area" aria-label="Active conversation">
+            {selectedExpert ? (
+              <>
+                <header className="chat-header">
+                  <button
+                    type="button"
+                    className="chat-back-button"
+                    onClick={returnToConversations}
+                    aria-label="Back to conversations"
+                  >
+                    <Icon name="arrow-left" size={18} />
+                  </button>
+                  <Avatar expert={selectedExpert} size="large" />
+                  <div className="chat-header-copy">
+                    <h2>{selectedExpert.name}</h2>
+                    <p>{selectedExpert.company} · {selectedExpert.role}</p>
+                    <div className="chat-topic-list">
+                      {selectedExpert.topics.slice(0, 3).map((topic) => (
+                        <span key={topic}>{topic}</span>
+                      ))}
                     </div>
                   </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <Link
+                    className="chat-profile-link"
+                    aria-label={`View ${selectedExpert.name}'s profile`}
+                    to={`/mock-interviews?tab=mentors&mentor=${encodeURIComponent(selectedExpert.id)}`}
+                  >
+                    <span>View profile</span>
+                    <Icon name="arrow-right" size={15} />
+                  </Link>
+                  {messages.length > 0 && (
                     <button
+                      type="button"
+                      className="chat-clear-button"
                       onClick={handleClearHistory}
-                      className="btn btn-secondary btn-sm"
-                      title="Clear chat history"
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                      aria-label={`Clear conversation with ${selectedExpert.name}`}
+                      title="Clear local conversation"
                     >
-                      <Icon name="trash" size={13} />
+                      <Icon name="trash" size={15} />
                       <span>Clear</span>
                     </button>
-                  </div>
-                </div>
-
-                {/* Messages Scroll Area */}
-                <div className="chat-messages-scroll">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`message-bubble ${msg.sender}`}
-                    >
-                      <div>{msg.text}</div>
-                      <div className="message-timestamp">
-                        {msg.timestamp}
-                      </div>
-                    </div>
-                  ))}
-
-                  {isSending && (
-                    <div className="message-bubble expert" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {selectedExpert.name} is typing...
-                      </span>
-                    </div>
                   )}
+                </header>
 
-                  <div ref={messagesEndRef} />
+                <div className="chat-messages-scroll" ref={messagesViewportRef} aria-live="polite">
+                  <div className="chat-demo-notice">
+                    <Icon name="lock" size={14} />
+                    <span>Demo mode — messages are stored on this device and are not sent to the expert.</span>
+                  </div>
+
+                  {messages.length === 0 ? (
+                    <div className="chat-empty-thread">
+                      <Avatar expert={selectedExpert} size="large" />
+                      <h3>No messages yet</h3>
+                      <p>Start a conversation about {selectedExpert.company}, interview preparation, or {selectedExpert.topics[0]}.</p>
+                    </div>
+                  ) : (
+                    messages.map((message, index) => {
+                      const day = formatDay(message);
+                      const previousDay = index > 0 ? formatDay(messages[index - 1]) : '';
+                      return (
+                        <React.Fragment key={message.id}>
+                          {day && day !== previousDay && (
+                            <div className="chat-day-divider"><span>{day}</span></div>
+                          )}
+                          <article className={`message-row ${message.sender === 'student' ? 'from-student' : 'from-expert'}`}>
+                            <div className={`message-bubble ${message.sender === 'student' ? 'student' : 'expert'}`}>
+                              <p>{message.text}</p>
+                              <time className="message-timestamp">
+                                {formatTime(message)}
+                              </time>
+                            </div>
+                          </article>
+                        </React.Fragment>
+                      );
+                    })
+                  )}
                 </div>
 
-                {/* Composer Form */}
                 <form onSubmit={handleSendMessage} className="chat-composer-box">
-                  <textarea
-                    rows={1}
-                    className="chat-textarea"
-                    placeholder={`Message ${selectedExpert.name}... (Press Enter to send, Shift+Enter for new line)`}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={!inputMessage.trim()}
-                    className="btn btn-primary btn-md"
-                    style={{
-                      height: '44px',
-                      padding: '0 1.25rem',
-                      opacity: !inputMessage.trim() ? 0.5 : 1
-                    }}
-                  >
-                    <Icon name="send" size={16} />
-                    <span>Send</span>
-                  </button>
+                  {(conversationState.error || sendError) && (
+                    <p className="chat-storage-error" role="alert">
+                      {sendError || conversationState.error}
+                    </p>
+                  )}
+                  <div className="chat-composer-row">
+                    <textarea
+                      rows={1}
+                      className="chat-textarea"
+                      placeholder="Write a message…"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={handleComposerKeyDown}
+                      aria-label={`Message ${selectedExpert.name}`}
+                      disabled={conversationState.readOnly}
+                    />
+                    <button
+                      type="submit"
+                      className="chat-send-button"
+                      disabled={!draft.trim() || conversationState.readOnly}
+                      aria-label="Send message"
+                    >
+                      <Icon name="send" size={17} />
+                    </button>
+                  </div>
+                  <div className="chat-composer-hint">
+                    <span>Enter to send · Shift + Enter for a new line</span>
+                    <span>Local conversation</span>
+                  </div>
                 </form>
+              </>
+            ) : selectedExpertId ? (
+              <div className="chat-selection-empty">
+                <span className="chat-empty-icon"><Icon name="user" size={24} /></span>
+                <h2>Expert not found</h2>
+                <p>This expert link may be outdated. Browse the directory to choose an available expert.</p>
+                <button
+                  type="button"
+                  className="chat-primary-action"
+                  onClick={() => {
+                    returnToConversations();
+                    setShowDirectory(true);
+                  }}
+                >
+                  Find an expert
+                </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                Select an expert to begin conversation.
+              <div className="chat-selection-empty">
+                <span className="chat-empty-icon"><Icon name="message-square" size={24} /></span>
+                <h2>Your conversations</h2>
+                <p>Select a saved conversation or find an expert to start a new one.</p>
+                <button
+                  type="button"
+                  className="chat-primary-action"
+                  onClick={() => setShowDirectory(true)}
+                >
+                  Find an expert
+                </button>
               </div>
             )}
-          </div>
-        </ScrollReveal>
+          </section>
+        </div>
       </div>
-    </div>
+    </section>
   );
 };

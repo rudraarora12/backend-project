@@ -34,8 +34,7 @@ export const Landing = () => {
                 </h1>
 
                 <p className="hero-description">
-                  Aggregated, crowdsourced technical interview experiences across 650+ tech leaders.
-                  Predict exact topic weightages, train with adaptive daily sprints, and conduct 1-on-1 mocks with verified placed candidates.
+                  Explore sample technical interview experiences and company topic patterns, build adaptive study sprints, and practice with simulated 1-on-1 mocks.
                 </p>
 
                 <div className="hero-actions">
@@ -66,7 +65,7 @@ export const Landing = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Icon name="check-circle" size={16} color="var(--status-emerald)" />
-                    <span>100% Student Crowdsourced</span>
+                    <span>Community Interview Samples</span>
                   </div>
                 </div>
               </div>
@@ -104,7 +103,7 @@ export const Landing = () => {
             </div>
 
             <Link to="/company-prep?tab=directory" className="btn btn-secondary btn-sm">
-              <span>View All 650+ Companies</span>
+              <span>View All {COMPANIES_DATA.length} Companies</span>
               <Icon name="arrow-right" size={15} />
             </Link>
           </div>
@@ -144,7 +143,7 @@ export const Landing = () => {
                     1. Company Prep
                   </h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                    Explore 650+ company recruitment intelligence, topic weightages, verified student interview debriefs, and universal question bank.
+                    Explore {COMPANIES_DATA.length} curated company profiles, topic patterns, sample interview reports, and a question bank.
                   </p>
                 </div>
                 <Link to="/company-prep" style={{ marginTop: '1.5rem', color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

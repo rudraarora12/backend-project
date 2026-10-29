@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Icon } from '../components/common/Icons';
+import { COMPANIES_DATA } from '../data/companies';
+import { apiRequest } from '../services/apiClient';
 import '../styles/auth.css';
 
 // Crisp Google Multi-Color SVG Logo
@@ -50,77 +52,67 @@ export const Login = ({ initialMode = 'register' }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // Sign In specific state
-  const [loginEmail, setLoginEmail] = useState('alex.rivera@stanford.edu');
-  const [loginPassword, setLoginPassword] = useState('password123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
 
   // Handle Sign Up
-  const handleSignUpSubmit = (e) => {
+  const handleSignUpSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     if (!acceptTerms) {
       showToast('Please accept the Terms & Conditions to continue.', 'warning');
       return;
     }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim() || 'New Candidate';
-    login({
-      name: fullName,
-      email: email.trim() || 'candidate@university.edu',
-      college: 'Stanford University',
-      degree: 'B.S. Computer Science',
-      graduationYear: 2026
-    });
-
-    showToast(`Welcome to Interview Intelligence, ${fullName}!`, 'success');
-    navigate('/dashboard');
+    setSubmitting(true);
+    try {
+      const { user } = await apiRequest('/auth/register', {
+        method: 'POST',
+        body: { name: fullName, email: email.trim(), password }
+      });
+      login(user);
+      navigate('/dashboard');
+    } catch (error) {
+      showToast(error.message || 'Unable to create your account.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // Handle Sign In
-  const handleSignInSubmit = (e) => {
+  const handleSignInSubmit = async (e) => {
     e.preventDefault();
-    login({
-      name: loginEmail.includes('@') ? loginEmail.split('@')[0].replace('.', ' ') : 'Alex Rivera',
-      email: loginEmail
-    });
-
-    showToast('Welcome back! Placement workspace synchronized.', 'success');
-    navigate('/dashboard');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { user } = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: { email: loginEmail.trim(), password: loginPassword, rememberMe }
+      });
+      login(user);
+      navigate('/dashboard');
+    } catch (error) {
+      showToast(error.message || 'Unable to sign in.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // One-Click Social SSO handlers
   const handleGoogleAuth = () => {
-    login({
-      name: 'Alex Rivera',
-      email: 'alex.rivera@gmail.com',
-      college: 'Stanford University (Google Verified)'
-    });
-    showToast('Authenticated via Google!', 'success');
-    navigate('/dashboard');
+    showToast('Google sign-in is unavailable until an OAuth provider is configured.', 'warning');
   };
 
   const handleAppleAuth = () => {
-    login({
-      name: 'Alex Rivera',
-      email: 'alex.rivera@icloud.com',
-      college: 'Stanford University (Apple Verified)'
-    });
-    showToast('Authenticated via Apple ID!', 'success');
-    navigate('/dashboard');
+    showToast('Apple sign-in is unavailable until an OAuth provider is configured.', 'warning');
   };
 
   const handleDemoStudentLogin = () => {
-    login({
-      name: 'Alex Rivera',
-      email: 'alex.rivera@stanford.edu',
-      college: 'Stanford University',
-      degree: 'B.S. Computer Science',
-      branch: 'Computer Science & AI',
-      graduationYear: 2026
-    });
-    showToast('Signed in as demo student: Alex Rivera (Stanford)', 'success');
-    navigate('/dashboard');
+    showToast('Demo sign-in is disabled. Create an account with a configured API server.', 'warning');
   };
 
   return (
@@ -149,7 +141,7 @@ export const Login = ({ initialMode = 'register' }) => {
             <p className="art-banner-subtitle">
               {mode === 'register'
                 ? 'Share your interview rounds and crack top offers!'
-                : 'Access 650+ verified company patterns & practice roadmaps!'}
+                : `Access ${COMPANIES_DATA.length} curated company profiles and practice roadmaps!`}
             </p>
           </div>
         </div>
@@ -210,6 +202,7 @@ export const Login = ({ initialMode = 'register' }) => {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  minLength={10}
                   required
                 />
                 <button
@@ -233,7 +226,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 </label>
               </div>
 
-              <button type="submit" className="art-btn-primary">
+              <button type="submit" className="art-btn-primary" disabled={submitting}>
                 <span>Join us</span>
                 <span style={{ fontSize: '1.1rem' }}>→</span>
               </button>
@@ -315,7 +308,7 @@ export const Login = ({ initialMode = 'register' }) => {
                   href="#forgot"
                   onClick={(e) => {
                     e.preventDefault();
-                    showToast('Password reset link sent to your inbox!', 'info');
+                    showToast('Password recovery is not available until email delivery is configured.', 'warning');
                   }}
                   className="art-forgot-link"
                 >
@@ -323,7 +316,7 @@ export const Login = ({ initialMode = 'register' }) => {
                 </a>
               </div>
 
-              <button type="submit" className="art-btn-primary">
+              <button type="submit" className="art-btn-primary" disabled={submitting}>
                 <span>Sign In</span>
                 <span style={{ fontSize: '1.1rem' }}>→</span>
               </button>

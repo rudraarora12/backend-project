@@ -105,13 +105,13 @@ export const CompanyCard = ({ company }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Difficulty:</span>
             <Badge variant={getDifficultyColor(company.avgDifficulty)} size="sm">
-              {company.avgDifficulty.toFixed(1)} / 5.0
+              {company.avgDifficulty?.toFixed(1) ?? 'N/A'} / 5.0
             </Badge>
           </div>
 
           {/* Roles Tags */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
-            {company.roles.slice(0, 3).map((role, idx) => (
+            {(company.popularRoles || []).slice(0, 3).map((role, idx) => (
               <span
                 key={idx}
                 style={{
