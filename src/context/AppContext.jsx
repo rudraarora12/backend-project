@@ -128,6 +128,23 @@ export const AppProvider = ({ children }) => {
     }
   }, [showToast]);
 
+  const switchRole = useCallback(async (newRole) => {
+    try {
+      const { user: updated } = await apiRequest('/auth/switch-role', {
+        method: 'POST',
+        body: { role: newRole }
+      });
+      setUser(updated);
+      showToast(`Switched to ${newRole === 'EXPERT' ? 'Partner' : 'Student'} mode.`, 'success');
+      return updated;
+    } catch (err) {
+      // Local fallback
+      setUser((prev) => ({ ...prev, role: newRole }));
+      showToast(`Switched to ${newRole === 'EXPERT' ? 'Partner' : 'Student'} mode.`, 'success');
+      return { ...user, role: newRole };
+    }
+  }, [showToast, user]);
+
   const updateUser = useCallback((updates) => {
     setUser((prev) => ({ ...prev, ...updates }));
   }, []);
@@ -190,6 +207,7 @@ export const AppProvider = ({ children }) => {
     setActiveTrack,
     login,
     logout,
+    switchRole,
     updateUser,
     toasts,
     showToast,

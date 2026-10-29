@@ -94,7 +94,11 @@ export const Login = ({ initialMode = 'login' }) => {
         }
       });
       login(user);
-      navigate('/dashboard');
+      if (user.role === 'EXPERT') {
+        navigate('/partner');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       showToast(error.message || 'Unable to create your account.', 'error');
     } finally {
@@ -117,7 +121,11 @@ export const Login = ({ initialMode = 'login' }) => {
         }
       });
       login(user);
-      navigate('/dashboard');
+      if (user.role === 'EXPERT') {
+        navigate('/partner');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       showToast(error.message || 'Unable to sign in.', 'error');
     } finally {
@@ -137,7 +145,8 @@ export const Login = ({ initialMode = 'login' }) => {
       const payload = {
         name: fbUser.displayName || 'Google Candidate',
         email: fbUser.email,
-        avatar: fbUser.photoURL || null
+        avatar: fbUser.photoURL || null,
+        role: accountRole === 'partner' ? 'EXPERT' : 'STUDENT'
       };
 
       try {
@@ -152,12 +161,16 @@ export const Login = ({ initialMode = 'login' }) => {
           name: payload.name,
           email: payload.email,
           avatar: payload.avatar,
-          role: 'STUDENT'
+          role: accountRole === 'partner' ? 'EXPERT' : 'STUDENT'
         });
       }
 
       showToast(`Welcome, ${fbUser.displayName || 'Candidate'}!`, 'success');
-      navigate('/dashboard');
+      if (user.role === 'EXPERT') {
+        navigate('/partner');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       if (error.code === 'auth/popup-closed-by-user') {
         showToast('Google sign-in was canceled.', 'info');
@@ -195,11 +208,15 @@ export const Login = ({ initialMode = 'login' }) => {
           name: payload.name,
           email: payload.email,
           avatar: payload.avatar,
-          role: 'STUDENT'
+          role: accountRole === 'partner' ? 'EXPERT' : 'STUDENT'
         });
       }
       showToast('Logged in as Demo Student!', 'success');
-      navigate('/dashboard');
+      if (user.role === 'EXPERT') {
+        navigate('/partner');
+      } else {
+        navigate('/dashboard');
+      }
     } finally {
       setSubmitting(false);
     }

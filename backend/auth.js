@@ -38,7 +38,8 @@ const passwordSchema = z.object({
 const firebaseLoginSchema = z.object({
   email: emailSchema,
   name: z.string().trim().min(1).max(100),
-  avatar: z.string().url().max(500).optional().nullable()
+  avatar: z.string().url().max(500).optional().nullable(),
+  role: z.enum(['STUDENT', 'EXPERT']).optional()
 });
 
 export function publicUser(user) {
@@ -128,22 +129,20 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     }
 
-    // Role verification if specific role tab was selected
+    let activeUser = user;
     if (input.role && user.role !== input.role && user.role !== 'ADMIN') {
-      if (input.role === 'EXPERT' && user.role === 'STUDENT') {
-        throw new ApiError(403, 'ROLE_MISMATCH', 'This account is registered as a Student. Please switch to the "Student" login tab, or register a new Partner account.');
-      }
-      if (input.role === 'STUDENT' && user.role === 'EXPERT') {
-        throw new ApiError(403, 'ROLE_MISMATCH', 'This account is registered as an Industry Partner. Please switch to the "Partner" login tab.');
-      }
+      activeUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: input.role }
+      });
     }
 
     await new Promise((resolve, reject) => {
       req.session.regenerate((error) => error ? reject(error) : resolve());
     });
-    req.session.userId = user.id;
+    req.session.userId = activeUser.id;
     req.session.cookie.maxAge = input.rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    res.json({ data: { user: publicUser(user) } });
+    res.json({ data: { user: publicUser(activeUser) } });
   }));
 
   // Demo Fast Partner Login
@@ -203,6 +202,8 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
   router.post('/auth/firebase-login', asyncRoute(async (req, res) => {
     const input = parseInput(firebaseLoginSchema, req.body);
     let user = await prisma.user.findUnique({ where: { email: input.email } });
+    const targetRole = input.role || 'STUDENT';
+
     if (!user) {
       const dummyPassword = crypto.randomUUID() + crypto.randomUUID();
       const passwordHash = await bcrypt.hash(dummyPassword, 10);
@@ -211,14 +212,20 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
           name: input.name,
           email: input.email,
           passwordHash,
-          avatar: input.avatar || null
+          avatar: input.avatar || null,
+          role: targetRole
         }
       });
-    } else if (!user.avatar && input.avatar) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { avatar: input.avatar }
-      });
+    } else {
+      const updateData = {};
+      if (!user.avatar && input.avatar) updateData.avatar = input.avatar;
+      if (input.role && user.role !== input.role && user.role !== 'ADMIN') updateData.role = input.role;
+      if (Object.keys(updateData).length > 0) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updateData
+        });
+      }
     }
     await new Promise((resolve, reject) => {
       req.session.regenerate((error) => (error ? reject(error) : resolve()));
@@ -226,6 +233,17 @@ export function registerAuthRoutes(router, loginLimiter, registerLimiter) {
     req.session.userId = user.id;
     req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
     res.json({ data: { user: publicUser(user) } });
+  }));
+
+  // Switch Active Account Role between STUDENT and EXPERT
+  router.post('/auth/switch-role', requireAuth, asyncRoute(async (req, res) => {
+    const roleSchema = z.object({ role: z.enum(['STUDENT', 'EXPERT']) });
+    const { role } = parseInput(roleSchema, req.body);
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { role }
+    });
+    res.json({ data: { user: publicUser(updated) } });
   }));
 
   router.post('/auth/logout', requireAuth, asyncRoute(async (req, res) => {

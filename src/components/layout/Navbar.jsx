@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { Icon } from '../common/Icons';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, logout } = useApp();
+  const { user, isAuthenticated, logout, switchRole } = useApp();
   const isPartner = isAuthenticated && (user?.role === 'EXPERT');
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -43,6 +43,18 @@ export const Navbar = () => {
     navigate('/');
   };
 
+  const handleSwitchToPartner = async () => {
+    await switchRole('EXPERT');
+    setProfileDropdownOpen(false);
+    navigate('/partner?tab=requests');
+  };
+
+  const handleSwitchToStudent = async () => {
+    await switchRole('STUDENT');
+    setProfileDropdownOpen(false);
+    navigate('/dashboard');
+  };
+
   return (
     <header
       style={{
@@ -51,10 +63,10 @@ export const Navbar = () => {
         left: 0,
         right: 0,
         height: '74px',
-        backgroundColor: 'rgba(5, 8, 17, 0.92)',
+        backgroundColor: 'rgba(5, 8, 17, 0.95)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: isPartner ? '1px solid rgba(108, 99, 255, 0.3)' : '1px solid rgba(0, 212, 255, 0.16)',
+        borderBottom: isPartner ? '1px solid rgba(108, 99, 255, 0.4)' : '1px solid rgba(0, 212, 255, 0.16)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center'
@@ -62,7 +74,7 @@ export const Navbar = () => {
     >
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         {/* Logo & Brand */}
-        <Link to={isPartner ? '/partner?tab=sessions' : '/'} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+        <Link to={isPartner ? '/partner?tab=requests' : '/'} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
           <div
             style={{
               width: '38px',
@@ -87,8 +99,8 @@ export const Navbar = () => {
                 {isPartner ? 'Partner' : 'Intelligence'}
               </span>
             </div>
-            <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              {isPartner ? 'PARTNER PHASE PORTAL' : 'INTELLIGRID 2.0'}
+            <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: isPartner ? '#A78BFA' : 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              {isPartner ? 'PARTNER PHASE ACTIVE' : 'INTELLIGRID 2.0'}
             </div>
           </div>
         </Link>
@@ -103,14 +115,14 @@ export const Navbar = () => {
           className="desktop-nav"
         >
           {isPartner ? (
-            /* PARTNER ONLY: EXACTLY TWO DEDICATED PAGES */
+            /* PARTNER ONLY: EXACTLY THE TWO REQUESTED PAGES */
             <>
               <NavLink
-                to="/partner?tab=sessions"
+                to="/partner?tab=requests"
                 style={({ isActive }) => {
-                  const isCurrent = location.pathname.includes('partner') && (!location.search.includes('publish'));
+                  const isCurrent = location.pathname.includes('partner') && (!location.search.includes('video'));
                   return {
-                    fontSize: '0.925rem',
+                    fontSize: '0.95rem',
                     fontWeight: 700,
                     color: isCurrent ? 'var(--accent-cyan)' : 'var(--text-muted)',
                     textDecoration: 'none',
@@ -125,16 +137,16 @@ export const Navbar = () => {
                   };
                 }}
               >
-                <Icon name="video" size={17} />
+                <Icon name="calendar" size={17} />
                 <span>Student Session Requests</span>
               </NavLink>
 
               <NavLink
-                to="/partner?tab=publish"
+                to="/partner?tab=video"
                 style={({ isActive }) => {
-                  const isCurrent = location.pathname.includes('partner') && location.search.includes('publish');
+                  const isCurrent = location.pathname.includes('partner') && location.search.includes('video');
                   return {
-                    fontSize: '0.925rem',
+                    fontSize: '0.95rem',
                     fontWeight: 700,
                     color: isCurrent ? 'var(--accent-purple)' : 'var(--text-muted)',
                     textDecoration: 'none',
@@ -149,12 +161,12 @@ export const Navbar = () => {
                   };
                 }}
               >
-                <Icon name="plus" size={17} />
-                <span>Share Experience</span>
+                <Icon name="video" size={17} />
+                <span>Video Call Session</span>
               </NavLink>
             </>
           ) : (
-            /* STUDENT NAVIGATION (WHEN NOT LOGGED IN AS PARTNER) */
+            /* STUDENT NAVIGATION (ONLY WHEN LOGGED IN AS STUDENT) */
             studentNavLinks.map((link) => (
               <NavLink
                 key={link.path}
@@ -179,15 +191,33 @@ export const Navbar = () => {
 
         {/* Action Controls & Profile Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {/* Top Right Quick Action: Share Experience */}
-          <Link
-            to={isPartner ? '/partner?tab=publish' : '/company-prep?tab=submit'}
-            className={isPartner ? 'btn btn-purple btn-sm desktop-share-btn' : 'btn btn-primary btn-sm desktop-share-btn'}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem' }}
-          >
-            <Icon name="plus" size={15} />
-            <span>Share Experience</span>
-          </Link>
+          {/* If Student, show 1-click switch to Partner Mode */}
+          {!isPartner && isAuthenticated && (
+            <button
+              type="button"
+              onClick={handleSwitchToPartner}
+              className="btn btn-purple btn-sm desktop-share-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem', boxShadow: '0 0 15px rgba(108, 99, 255, 0.3)' }}
+              title="Switch this account to Partner Mode"
+            >
+              <Icon name="shield" size={15} />
+              <span>Switch to Partner Mode</span>
+            </button>
+          )}
+
+          {/* If Partner, show 1-click button to go to Video Call or Switch */}
+          {isPartner && (
+            <button
+              type="button"
+              onClick={handleSwitchToStudent}
+              className="btn btn-secondary btn-sm desktop-share-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem' }}
+              title="Return to Student Mode"
+            >
+              <Icon name="grid" size={14} />
+              <span>Switch to Student Mode</span>
+            </button>
+          )}
 
           {isAuthenticated ? (
             <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -197,13 +227,14 @@ export const Navbar = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.6rem',
-                  background: isPartner ? 'rgba(20, 15, 45, 0.9)' : 'rgba(13, 21, 39, 0.85)',
-                  border: isPartner ? '1px solid rgba(108, 99, 255, 0.4)' : '1px solid var(--border-glass)',
+                  background: isPartner ? 'rgba(20, 15, 45, 0.95)' : 'rgba(13, 21, 39, 0.85)',
+                  border: isPartner ? '1px solid rgba(108, 99, 255, 0.5)' : '1px solid var(--border-glass)',
                   borderRadius: 'var(--radius-full)',
                   padding: '0.3rem 0.65rem 0.3rem 0.35rem',
                   cursor: 'pointer',
                   color: 'var(--text-main)',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  boxShadow: isPartner ? '0 0 15px rgba(108, 99, 255, 0.25)' : 'none'
                 }}
                 aria-expanded={profileDropdownOpen}
                 aria-label="User Account Menu"
@@ -216,7 +247,7 @@ export const Navbar = () => {
                     height: '30px',
                     borderRadius: '50%',
                     objectFit: 'cover',
-                    border: isPartner ? '1px solid var(--accent-purple)' : '1px solid var(--accent-cyan)'
+                    border: isPartner ? '1.5px solid var(--accent-purple)' : '1.5px solid var(--accent-cyan)'
                   }}
                 />
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -260,10 +291,10 @@ export const Navbar = () => {
                   </div>
 
                   {isPartner ? (
-                    /* PARTNER DROPDOWN: ONLY THE 2 PAGES + LOGOUT */
+                    /* PARTNER DROPDOWN: ONLY THE TWO PAGES */
                     <>
                       <Link
-                        to="/partner?tab=sessions"
+                        to="/partner?tab=requests"
                         className="dropdown-item"
                         style={{
                           display: 'flex',
@@ -277,12 +308,12 @@ export const Navbar = () => {
                           transition: 'background 0.2s'
                         }}
                       >
-                        <Icon name="video" size={16} color="var(--accent-cyan)" />
+                        <Icon name="calendar" size={16} color="var(--accent-cyan)" />
                         <span>Student Session Requests</span>
                       </Link>
 
                       <Link
-                        to="/partner?tab=publish"
+                        to="/partner?tab=video"
                         className="dropdown-item"
                         style={{
                           display: 'flex',
@@ -296,9 +327,31 @@ export const Navbar = () => {
                           transition: 'background 0.2s'
                         }}
                       >
-                        <Icon name="plus" size={16} color="var(--accent-purple)" />
-                        <span>Share Experience</span>
+                        <Icon name="video" size={16} color="var(--accent-purple)" />
+                        <span>Video Call Session</span>
                       </Link>
+
+                      <button
+                        onClick={handleSwitchToStudent}
+                        className="dropdown-item"
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.65rem',
+                          padding: '0.55rem 0.75rem',
+                          color: 'var(--accent-cyan)',
+                          fontSize: '0.85rem',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <Icon name="grid" size={16} />
+                        <span>Switch to Student Mode</span>
+                      </button>
                     </>
                   ) : (
                     /* STUDENT DROPDOWN */
@@ -341,29 +394,11 @@ export const Navbar = () => {
                         <span>Profile & Bookmarks</span>
                       </Link>
 
-                      <Link
-                        to="/admin"
+                      <button
+                        onClick={handleSwitchToPartner}
                         className="dropdown-item"
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.65rem',
-                          padding: '0.55rem 0.75rem',
-                          color: 'var(--text-main)',
-                          fontSize: '0.85rem',
-                          borderRadius: 'var(--radius-sm)',
-                          textDecoration: 'none',
-                          transition: 'background 0.2s'
-                        }}
-                      >
-                        <Icon name="shield" size={16} color="var(--accent-purple)" />
-                        <span>Moderation Desk</span>
-                      </Link>
-
-                      <Link
-                        to="/login?role=partner"
-                        className="dropdown-item"
-                        style={{
+                          width: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.65rem',
@@ -371,13 +406,15 @@ export const Navbar = () => {
                           color: '#C4B5FD',
                           fontSize: '0.85rem',
                           borderRadius: 'var(--radius-sm)',
-                          textDecoration: 'none',
-                          transition: 'background 0.2s'
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left'
                         }}
                       >
-                        <Icon name="users" size={16} color="var(--accent-purple)" />
+                        <Icon name="shield" size={16} color="var(--accent-purple)" />
                         <span>Switch to Partner Mode</span>
-                      </Link>
+                      </button>
                     </>
                   )}
 
@@ -454,12 +491,31 @@ export const Navbar = () => {
             /* MOBILE MENU FOR PARTNER: EXACTLY TWO PAGES */
             <>
               <NavLink
-                to="/partner?tab=sessions"
+                to="/partner?tab=requests"
                 onClick={() => setMobileMenuOpen(false)}
                 style={({ isActive }) => ({
                   fontSize: '1.05rem',
                   fontWeight: 700,
-                  color: !location.search.includes('publish') ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  color: !location.search.includes('video') ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  padding: '0.6rem 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                })}
+              >
+                <Icon name="calendar" size={18} />
+                <span>Student Session Requests</span>
+              </NavLink>
+
+              <NavLink
+                to="/partner?tab=video"
+                onClick={() => setMobileMenuOpen(false)}
+                style={({ isActive }) => ({
+                  fontSize: '1.05rem',
+                  fontWeight: 700,
+                  color: location.search.includes('video') ? 'var(--accent-purple)' : 'var(--text-muted)',
                   padding: '0.6rem 0',
                   borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                   textDecoration: 'none',
@@ -469,26 +525,7 @@ export const Navbar = () => {
                 })}
               >
                 <Icon name="video" size={18} />
-                <span>Student Session Requests</span>
-              </NavLink>
-
-              <NavLink
-                to="/partner?tab=publish"
-                onClick={() => setMobileMenuOpen(false)}
-                style={({ isActive }) => ({
-                  fontSize: '1.05rem',
-                  fontWeight: 700,
-                  color: location.search.includes('publish') ? 'var(--accent-purple)' : 'var(--text-muted)',
-                  padding: '0.6rem 0',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                })}
-              >
-                <Icon name="plus" size={18} />
-                <span>Share Experience</span>
+                <span>Video Call Session</span>
               </NavLink>
 
               <button
@@ -521,15 +558,14 @@ export const Navbar = () => {
                 </NavLink>
               ))}
 
-              <Link
-                to="/company-prep?tab=submit"
-                onClick={() => setMobileMenuOpen(false)}
-                className="btn btn-primary btn-sm"
+              <button
+                onClick={handleSwitchToPartner}
+                className="btn btn-purple btn-sm"
                 style={{ justifyContent: 'center', marginTop: '0.5rem' }}
               >
-                <Icon name="plus" size={16} />
-                <span>Share Experience</span>
-              </Link>
+                <Icon name="shield" size={16} />
+                <span>Switch to Partner Mode</span>
+              </button>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
                 <Link
