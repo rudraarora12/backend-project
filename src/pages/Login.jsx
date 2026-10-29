@@ -35,14 +35,14 @@ const AppleIcon = () => (
   </svg>
 );
 
-export const Login = ({ initialMode = 'register' }) => {
+export const Login = ({ initialMode = 'login' }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, showToast } = useApp();
 
   // Route awareness: /login defaults to 'login', /register defaults to 'register'
-  const isLoginRoute = location.pathname.includes('login') && initialMode !== 'register';
-  const [mode, setMode] = useState(isLoginRoute ? 'login' : 'register');
+  const isLoginRoute = location.pathname.includes('login');
+  const [mode, setMode] = useState(isLoginRoute ? 'login' : initialMode);
 
   const [showPassword, setShowPassword] = useState(false);
 
