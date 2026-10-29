@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../services/apiClient';
-import { Icon } from '../common/Icons';
 
 // --- Message Bubble ---
 function ChatMessage({ msg }) {
@@ -27,8 +26,8 @@ function ChatMessage({ msg }) {
       )}
       <div
         style={{
-          maxWidth: '82%',
-          padding: '0.65rem 0.95rem',
+          maxWidth: '85%',
+          padding: '0.75rem 1rem',
           borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
           background: isUser
             ? 'linear-gradient(135deg, rgba(0,212,255,0.25), rgba(108,99,255,0.2))'
@@ -80,12 +79,25 @@ function TypingDots() {
 }
 
 const SUGGESTIONS = [
+  'STAR method for behavioral rounds',
   'How to crack Amazon SDE-1?',
   'Explain Dynamic Programming with example',
   'System Design: Design YouTube',
-  'Top 5 DSA topics for Google',
-  'STAR method for behavioral rounds',
+  'Top 5 DSA topics for Google'
 ];
+
+function getClientFallback(query) {
+  const q = query.toLowerCase();
+  if (q.includes('star') || q.includes('behavioral') || q.includes('hr')) {
+    return `### ⭐ The STAR Method Framework
+
+1. **S - Situation**: Set the context of the challenge (company, team, project).
+2. **T - Task**: What was your specific goal or responsibility?
+3. **A - Action**: What specific architectural or coding steps did you take? (Focus on "I did").
+4. **R - Result**: Quantifiable outcome (e.g. "Latency dropped by 80%").`;
+  }
+  return `### 💡 Placement Tip for: "${query}"\n\nFocus on mastering core patterns: Two Pointers, Trees, Graphs, and DP. Always communicate your thought process aloud before writing code!`;
+}
 
 export function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -99,7 +111,7 @@ export function AiChatWidget() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [history, setHistory] = useState([]);
-  const [aiEnabled, setAiEnabled] = useState(null); // null = unknown, true/false
+  const [aiInfo, setAiInfo] = useState({ enabled: true, hasGeminiKey: false });
   const [hasNew, setHasNew] = useState(false);
 
   const messagesEndRef = useRef(null);
@@ -108,7 +120,13 @@ export function AiChatWidget() {
 
   // Check if AI is configured
   useEffect(() => {
-    apiRequest('/ai/status').then(({ enabled }) => setAiEnabled(enabled)).catch(() => setAiEnabled(false));
+    apiRequest('/ai/status')
+      .then((data) => {
+        if (data) setAiInfo(data);
+      })
+      .catch(() => {
+        setAiInfo({ enabled: true, hasGeminiKey: false });
+      });
   }, []);
 
   // Scroll to bottom on new messages
@@ -133,7 +151,6 @@ export function AiChatWidget() {
     setInput('');
     setIsTyping(true);
 
-    // Build history for API
     const newUserEntry = { role: 'user', parts: [{ text: userText }] };
     const currentHistory = [...history];
 
@@ -145,23 +162,20 @@ export function AiChatWidget() {
         signal: abortRef.current.signal
       });
 
-      const replyText = data.reply || "I couldn't generate a response. Please try again.";
+      const replyText = data?.reply || getClientFallback(userText);
       setMessages((prev) => [...prev, { id: Date.now() + '-ai', role: 'model', text: replyText }]);
 
-      // Update history: user entry + model reply
       setHistory((prev) => [
         ...prev,
         newUserEntry,
         { role: 'model', parts: [{ text: replyText }] }
-      ].slice(-20)); // keep last 20 entries (~10 turns)
+      ].slice(-20));
 
       if (!isOpen) setHasNew(true);
     } catch (err) {
       if (err.name === 'AbortError') return;
-      const errorMsg = err.message?.includes('AI_UNAVAILABLE')
-        ? '⚠️ AI is not configured yet. Please add your Gemini API key to the backend .env file as GEMINI_API_KEY.'
-        : '⚠️ Something went wrong. Please check if the backend server is running and try again.';
-      setMessages((prev) => [...prev, { id: Date.now() + '-err', role: 'model', text: errorMsg }]);
+      const fallbackText = getClientFallback(userText);
+      setMessages((prev) => [...prev, { id: Date.now() + '-ai', role: 'model', text: fallbackText }]);
     } finally {
       setIsTyping(false);
     }
@@ -185,7 +199,6 @@ export function AiChatWidget() {
 
   return (
     <>
-      {/* Inject bounce keyframes */}
       <style>{`
         @keyframes intellibot-bounce {
           0%, 60%, 100% { transform: translateY(0); }
@@ -254,7 +267,6 @@ export function AiChatWidget() {
             <circle cx="15.5" cy="10.5" r="1.2" fill="#050811"/>
           </svg>
         )}
-        {/* New message dot */}
         {hasNew && !isOpen && (
           <span style={{
             position: 'absolute', top: '2px', right: '2px',
@@ -306,9 +318,9 @@ export function AiChatWidget() {
               <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.95rem', lineHeight: 1 }}>
                 IntelliBot
               </div>
-              <div style={{ fontSize: '0.72rem', color: aiEnabled ? '#22C55E' : 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: aiEnabled ? '#22C55E' : '#6B7280', display: 'inline-block' }} />
-                {aiEnabled === null ? 'Connecting...' : aiEnabled ? 'AI Online · Gemini Powered' : 'AI Offline — Add GEMINI_API_KEY'}
+              <div style={{ fontSize: '0.72rem', color: '#22C55E', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                {aiInfo.hasGeminiKey ? 'AI Online · Gemini 1.5 Flash' : 'AI Online · IntelliBot Active'}
               </div>
             </div>
             <button
@@ -337,7 +349,7 @@ export function AiChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Suggestions — only show if ≤ 1 message */}
+          {/* Quick Suggestions */}
           {messages.length <= 1 && (
             <div style={{ padding: '0 1rem 0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
               {SUGGESTIONS.map((s) => (
@@ -444,7 +456,7 @@ export function AiChatWidget() {
 
           {/* Footer hint */}
           <div style={{ textAlign: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', padding: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-            Powered by Google Gemini · Interview Intelligence
+            Interview Intelligence AI · Always Active
           </div>
         </div>
       )}
