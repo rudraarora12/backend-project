@@ -14,6 +14,7 @@ import { coreRouter } from './core-routes.js';
 import { roadmapRouter } from './roadmaps.js';
 import { assertConversationParticipant, saveMessage, chatRouter } from './chat.js';
 import { aiChatRouter } from './ai-chat.js';
+import { dashboardRouter } from './dashboard.js';
 
 function socketFailure(error, socket) {
   if (error instanceof ApiError) return { ok: false, error: error.code, message: error.message };
@@ -113,6 +114,7 @@ export function createApp() {
   registerAuthRoutes(api, loginLimiter, registerLimiter);
   api.use(coreRouter());
   api.use(roadmapRouter());
+  api.use(dashboardRouter());
   app.use('/api', api);
 
   const server = http.createServer(app);

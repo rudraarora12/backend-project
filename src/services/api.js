@@ -77,3 +77,16 @@ export const adminApi = {
   moderateExpert: (id, status) =>
     apiRequest(`/admin/experts/${id}`, { method: 'PATCH', body: { status } }),
 };
+
+// ============================================================
+// Dashboard (Real-time MongoDB)
+// ============================================================
+export const dashboardApi = {
+  get: () => apiRequest('/dashboard'),
+  setTrack: (track) => apiRequest('/dashboard/track', { method: 'POST', body: { track } }),
+  setMilestone: (milestoneId, status) =>
+    apiRequest('/dashboard/milestone', { method: 'POST', body: { milestoneId, status } }),
+  setChallenge: (challengeId, status) =>
+    apiRequest('/dashboard/challenge', { method: 'POST', body: { challengeId, status } }),
+  updateProfile: (data) => apiRequest('/dashboard/profile', { method: 'PATCH', body: data }),
+};

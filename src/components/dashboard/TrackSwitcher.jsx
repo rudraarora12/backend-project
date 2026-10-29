@@ -1,13 +1,50 @@
 import React from 'react';
 import { TRACK_CONFIGS } from '../../data/dashboard';
 import { useApp } from '../../context/AppContext';
+import { dashboardApi } from '../../services/api';
 import { ProgressBar } from '../common/ProgressBar';
 
-export const TrackSwitcher = () => {
-  const { activeTrack, setActiveTrack } = useApp();
-  const currentTrack = TRACK_CONFIGS[activeTrack] || TRACK_CONFIGS.amazon;
-
+export const TrackSwitcher = ({
+  currentTrackKey = null,
+  onTrackChanged = null,
+  mongoMilestones = {},
+  onMilestoneChanged = null
+}) => {
+  const { activeTrack: contextActiveTrack, setActiveTrack } = useApp();
+  const selectedTrackKey = currentTrackKey || contextActiveTrack || 'amazon';
+  const currentTrack = TRACK_CONFIGS[selectedTrackKey] || TRACK_CONFIGS.amazon;
   const tracks = Object.keys(TRACK_CONFIGS);
+
+  const handleSelectTrack = async (key) => {
+    setActiveTrack(key);
+    if (onTrackChanged) {
+      onTrackChanged(key);
+    }
+    try {
+      await dashboardApi.setTrack(key);
+    } catch (err) {
+      console.warn('Failed to save track to MongoDB:', err);
+    }
+  };
+
+  const handleToggleMilestone = async (mId, currentStatus) => {
+    const nextStatus =
+      currentStatus === 'completed'
+        ? 'in_progress'
+        : currentStatus === 'in_progress'
+        ? 'todo'
+        : 'completed';
+
+    if (onMilestoneChanged) {
+      onMilestoneChanged(mId, nextStatus);
+    }
+
+    try {
+      await dashboardApi.setMilestone(mId, nextStatus);
+    } catch (err) {
+      console.warn('Failed to save milestone to MongoDB:', err);
+    }
+  };
 
   return (
     <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: 'var(--radius-lg)' }}>
@@ -15,11 +52,11 @@ export const TrackSwitcher = () => {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {tracks.map((key) => {
           const t = TRACK_CONFIGS[key];
-          const isActive = activeTrack === key;
+          const isActive = selectedTrackKey === key;
           return (
             <button
               key={key}
-              onClick={() => setActiveTrack(key)}
+              onClick={() => handleSelectTrack(key)}
               style={{
                 padding: '0.65rem 1.25rem',
                 borderRadius: 'var(--radius-md)',
@@ -31,6 +68,7 @@ export const TrackSwitcher = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.6rem',
+                cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
             >
@@ -96,26 +134,34 @@ export const TrackSwitcher = () => {
 
         {/* Syllabus Milestones */}
         <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
-            CAMPUS RECRUITMENT MILESTONES
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
+              CAMPUS RECRUITMENT MILESTONES (CLICK TO TOGGLE PROGRESS)
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>Auto-saved to MongoDB</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
             {currentTrack.milestones.map((m) => {
-              const isDone = m.status === 'completed';
-              const isInProg = m.status === 'in_progress';
+              const status = mongoMilestones[m.id] || m.status;
+              const isDone = status === 'completed';
+              const isInProg = status === 'in_progress';
 
               return (
                 <div
                   key={m.id}
+                  onClick={() => handleToggleMilestone(m.id, status)}
                   style={{
                     padding: '0.75rem 0.9rem',
                     borderRadius: 'var(--radius-sm)',
                     background: 'rgba(13, 21, 39, 0.8)',
-                    border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.3)' : isInProg ? 'rgba(0, 212, 255, 0.3)' : 'var(--border-subtle)'}`,
+                    border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.4)' : isInProg ? 'rgba(0, 212, 255, 0.4)' : 'var(--border-subtle)'}`,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.65rem'
+                    gap: '0.65rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
                   }}
+                  title="Click to toggle: Completed -> In Progress -> Todo"
                 >
                   <span
                     style={{
@@ -129,7 +175,8 @@ export const TrackSwitcher = () => {
                       justifyContent: 'center',
                       fontSize: '0.65rem',
                       color: '#050811',
-                      fontWeight: 800
+                      fontWeight: 800,
+                      flexShrink: 0
                     }}
                   >
                     {isDone ? '✓' : isInProg ? '•' : ''}

@@ -1,8 +1,29 @@
 import React, { useMemo, useState } from 'react';
 import { generateHeatmapData } from '../../data/dashboard';
 
-export const Heatmap = () => {
-  const weeks = useMemo(() => generateHeatmapData(), []);
+export const Heatmap = ({ dynamicStats = null, dynamicHeatmap = {} }) => {
+  const weeks = useMemo(() => {
+    const rawWeeks = generateHeatmapData();
+    if (!dynamicHeatmap || Object.keys(dynamicHeatmap).length === 0) {
+      return rawWeeks;
+    }
+    // Overlay dynamic counts from MongoDB onto the calendar
+    return rawWeeks.map((week) =>
+      week.map((day) => {
+        const mongoCount = dynamicHeatmap[day.date];
+        if (typeof mongoCount === 'number') {
+          const newCount = day.count + mongoCount;
+          return {
+            ...day,
+            count: newCount,
+            level: Math.min(4, Math.max(1, Math.ceil(newCount / 2)))
+          };
+        }
+        return day;
+      })
+    );
+  }, [dynamicHeatmap]);
+
   const [hoveredDay, setHoveredDay] = useState(null);
 
   // Compute total questions solved and streaks
@@ -15,7 +36,6 @@ export const Heatmap = () => {
       total += d.count;
     });
 
-    // Calculate streak from most recent days
     for (let i = flatDays.length - 1; i >= 0; i--) {
       if (flatDays[i].count > 0) {
         currentStreak++;
@@ -24,8 +44,13 @@ export const Heatmap = () => {
       }
     }
 
-    return { totalSubmissions: total, activeStreak: Math.max(currentStreak, 14) };
-  }, [weeks]);
+    const calculatedStreak = Math.max(currentStreak, 14);
+
+    return {
+      totalSubmissions: dynamicStats?.totalSolved ?? total,
+      activeStreak: dynamicStats?.streak ?? calculatedStreak
+    };
+  }, [weeks, dynamicStats]);
 
   const getColor = (level) => {
     switch (level) {
@@ -46,7 +71,7 @@ export const Heatmap = () => {
             52-Week Placement Consistency Heatmap
           </h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Daily algorithmic problem solutions, mock evaluations, and system design drills
+            Daily algorithmic problem solutions & drills (Live synced with MongoDB)
           </p>
         </div>
 

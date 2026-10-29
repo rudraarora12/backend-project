@@ -1,24 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DEFAULT_PRACTICE_CHALLENGES } from '../../data/dashboard';
-import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { dashboardApi } from '../../services/api';
 import { Badge } from '../common/Badge';
 import { Icon } from '../common/Icons';
 
-export const PracticeTable = ({ filterTrack = null }) => {
-  const [challenges, setChallenges] = useLocalStorage('ii_practice_table', DEFAULT_PRACTICE_CHALLENGES);
+export const PracticeTable = ({ filterTrack = null, mongoChallenges = {}, onChallengeUpdated }) => {
+  const [challenges, setChallenges] = useState(() => {
+    return DEFAULT_PRACTICE_CHALLENGES.map((item) => ({
+      ...item,
+      status: mongoChallenges[item.id] || item.status
+    }));
+  });
+
   const [filterDifficulty, setFilterDifficulty] = useState('All');
 
-  const toggleStatus = (id) => {
+  useEffect(() => {
+    if (mongoChallenges && Object.keys(mongoChallenges).length > 0) {
+      setChallenges((prev) =>
+        prev.map((item) => ({
+          ...item,
+          status: mongoChallenges[item.id] || item.status
+        }))
+      );
+    }
+  }, [mongoChallenges]);
+
+  const toggleStatus = async (id) => {
+    const current = challenges.find((item) => item.id === id);
+    if (!current) return;
+    const nextStatus =
+      current.status === 'Todo' ? 'In Progress' : current.status === 'In Progress' ? 'Solved' : 'Todo';
+
     setChallenges((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const nextStatus =
-            item.status === 'Todo' ? 'In Progress' : item.status === 'In Progress' ? 'Solved' : 'Todo';
-          return { ...item, status: nextStatus };
-        }
-        return item;
-      })
+      prev.map((item) => (item.id === id ? { ...item, status: nextStatus } : item))
     );
+
+    try {
+      await dashboardApi.setChallenge(id, nextStatus);
+      if (onChallengeUpdated) {
+        onChallengeUpdated(id, nextStatus);
+      }
+    } catch (err) {
+      console.warn('Dashboard problem status sync to MongoDB failed:', err);
+    }
   };
 
   const filtered = challenges.filter((c) => {
@@ -56,7 +80,7 @@ export const PracticeTable = ({ filterTrack = null }) => {
             Core Problem Practice Matrix
           </h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            High-frequency company tagged questions with one-click status transitions
+            High-frequency company tagged questions with real-time status saving to MongoDB
           </p>
         </div>
 
@@ -104,7 +128,7 @@ export const PracticeTable = ({ filterTrack = null }) => {
                   <button
                     onClick={() => toggleStatus(item.id)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    title="Click to toggle status (Todo -> In Progress -> Solved)"
+                    title="Click to toggle status (Todo -> In Progress -> Solved). Auto-saved to MongoDB."
                   >
                     {getStatusBadge(item.status)}
                   </button>
